@@ -14,12 +14,13 @@ public sealed partial class ConfigStore(string filePath)
         WriteIndented = true,
     };
 
+    public static bool IsValidRepositoryName(string repository) => RepositoryName().IsMatch(repository);
+
     public PrTrayConfig LoadOrCreate()
     {
         if (!File.Exists(filePath))
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-            File.WriteAllText(filePath, JsonSerializer.Serialize(PrTrayConfig.Default, JsonOptions));
+            Save(PrTrayConfig.Default);
             return PrTrayConfig.Default;
         }
         try
@@ -34,10 +35,18 @@ public sealed partial class ConfigStore(string filePath)
         }
     }
 
+    public void Save(PrTrayConfig config)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        var temporaryPath = filePath + ".tmp";
+        File.WriteAllText(temporaryPath, JsonSerializer.Serialize(config, JsonOptions));
+        File.Move(temporaryPath, filePath, overwrite: true);
+    }
+
     private static PrTrayConfig Sanitize(StoredConfig stored) => new(
-        WatchedRepositories: (stored.WatchedRepositories ?? [])
+        Repositories: (stored.Repositories ?? stored.WatchedRepositories ?? [])
             .OfType<string>()
-            .Where(repository => RepositoryName().IsMatch(repository))
+            .Where(IsValidRepositoryName)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList(),
         PollIntervalSeconds: Math.Max(stored.PollIntervalSeconds ?? PrTrayConfig.Default.PollIntervalSeconds, MinimumPollIntervalSeconds),
@@ -46,5 +55,5 @@ public sealed partial class ConfigStore(string filePath)
     [GeneratedRegex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")]
     private static partial Regex RepositoryName();
 
-    internal sealed record StoredConfig(List<string?>? WatchedRepositories, int? PollIntervalSeconds, string? GhPath);
+    internal sealed record StoredConfig(List<string?>? Repositories, List<string?>? WatchedRepositories, int? PollIntervalSeconds, string? GhPath);
 }

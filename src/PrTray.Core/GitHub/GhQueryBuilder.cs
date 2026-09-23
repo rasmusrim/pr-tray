@@ -25,26 +25,29 @@ public static class GhQueryBuilder
         "commits(last: 1) { nodes { commit { oid committedDate } } } " +
         "reviews(last: 30) { nodes { id state submittedAt author { __typename login } commit { oid } } } }";
 
-    public static string Build(IReadOnlyList<string> watchedRepositories, DateOnly mergedSince)
+    public static string Build(IReadOnlyList<string> repositories, DateOnly mergedSince)
     {
+        var repositoryFilter = string.Join(" ", repositories.Select(repository => $"repo:{repository}"));
         var mergedFilter = $"is:pr is:merged merged:>={mergedSince:yyyy-MM-dd}";
         var searches = new List<string>
         {
-            Search("mine", $"{OpenFilter} author:@me"),
-            Search("requested", $"{OpenFilter} review-requested:@me"),
-            Search("reviewed", $"{OpenFilter} reviewed-by:@me"),
-            Search("mergedMine", $"{mergedFilter} author:@me"),
-            Search("mergedReviewed", $"{mergedFilter} reviewed-by:@me"),
+            Search("mine", $"{OpenFilter} author:@me", repositoryFilter),
+            Search("requested", $"{OpenFilter} review-requested:@me", repositoryFilter),
+            Search("reviewed", $"{OpenFilter} reviewed-by:@me", repositoryFilter),
+            Search("mergedMine", $"{mergedFilter} author:@me", repositoryFilter),
+            Search("mergedReviewed", $"{mergedFilter} reviewed-by:@me", repositoryFilter),
         };
-        if (watchedRepositories.Count > 0)
+        if (repositories.Count > 0)
         {
-            var repositoryFilter = string.Join(" ", watchedRepositories.Select(repository => $"repo:{repository}"));
-            searches.Add(Search("watched", $"{OpenFilter} {repositoryFilter}"));
-            searches.Add(Search("mergedWatched", $"{mergedFilter} {repositoryFilter}"));
+            searches.Add(Search("watched", OpenFilter, repositoryFilter));
+            searches.Add(Search("mergedWatched", mergedFilter, repositoryFilter));
         }
         return $"query {{ viewer {{ login }} {string.Join(" ", searches)} }} {PrFieldsFragment}";
     }
 
-    private static string Search(string alias, string searchQuery) =>
-        $"{alias}: search(query: \"{searchQuery}\", type: ISSUE, first: {MaxResultsPerSearch}) {{ nodes {{ ...PrFields }} }}";
+    private static string Search(string alias, string searchQuery, string repositoryFilter)
+    {
+        var filteredQuery = repositoryFilter.Length == 0 ? searchQuery : $"{searchQuery} {repositoryFilter}";
+        return $"{alias}: search(query: \"{filteredQuery}\", type: ISSUE, first: {MaxResultsPerSearch}) {{ nodes {{ ...PrFields }} }}";
+    }
 }

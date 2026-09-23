@@ -80,4 +80,18 @@ public sealed class PollerTests : IDisposable
         Assert.Single(runner.Calls);
         Assert.Single(outcomes);
     }
+
+    [Fact]
+    public async Task Updated_config_is_used_by_the_next_poll()
+    {
+        var runner = FakeProcessRunner.Returning(FakeProcessRunner.Ok(FixtureJson));
+        using var poller = CreatePoller(runner);
+
+        poller.UpdateConfig(PrTrayConfig.Default with { Repositories = ["rasmusrim/ku"] });
+        await poller.RefreshNowAsync();
+
+        var query = Assert.Single(runner.Calls).Arguments[3];
+        Assert.Contains("repo:rasmusrim/ku", query);
+        Assert.DoesNotContain("repo:acme/widgets", query);
+    }
 }

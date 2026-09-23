@@ -22,18 +22,18 @@ public sealed class ConfigStoreTests : IDisposable
     {
         var config = new ConfigStore(ConfigPath).LoadOrCreate();
 
-        Assert.Equal(PrTrayConfig.Default.WatchedRepositories, config.WatchedRepositories);
+        Assert.Equal(PrTrayConfig.Default.Repositories, config.Repositories);
         Assert.Equal(120, config.PollIntervalSeconds);
         Assert.Equal("gh", config.GhPath);
-        Assert.Contains("\"watchedRepositories\"", File.ReadAllText(ConfigPath));
+        Assert.Contains("\"repositories\"", File.ReadAllText(ConfigPath));
     }
 
     [Fact]
     public void Stored_values_are_loaded()
     {
-        var config = LoadFrom("""{ "watchedRepositories": ["rasmusrim/ku"], "pollIntervalSeconds": 300, "ghPath": "/opt/homebrew/bin/gh" }""");
+        var config = LoadFrom("""{ "repositories": ["rasmusrim/ku"], "pollIntervalSeconds": 300, "ghPath": "/opt/homebrew/bin/gh" }""");
 
-        Assert.Equal(new[] { "rasmusrim/ku" }, config.WatchedRepositories);
+        Assert.Equal(new[] { "rasmusrim/ku" }, config.Repositories);
         Assert.Equal(300, config.PollIntervalSeconds);
         Assert.Equal("/opt/homebrew/bin/gh", config.GhPath);
     }
@@ -41,9 +41,9 @@ public sealed class ConfigStoreTests : IDisposable
     [Fact]
     public void Invalid_repository_names_are_dropped()
     {
-        var config = LoadFrom("""{ "watchedRepositories": ["acme/widgets", "foo bar/baz", "x\" is:closed", "justname", null, "ACME/widgets"] }""");
+        var config = LoadFrom("""{ "repositories": ["acme/widgets", "foo bar/baz", "x\" is:closed", "justname", null, "ACME/widgets"] }""");
 
-        Assert.Equal(new[] { "acme/widgets" }, config.WatchedRepositories);
+        Assert.Equal(new[] { "acme/widgets" }, config.Repositories);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class ConfigStoreTests : IDisposable
         var config = LoadFrom("""{ "pollIntervalSeconds": 5 }""");
 
         Assert.Equal(ConfigStore.MinimumPollIntervalSeconds, config.PollIntervalSeconds);
-        Assert.Empty(config.WatchedRepositories);
+        Assert.Empty(config.Repositories);
         Assert.Equal("gh", config.GhPath);
     }
 
@@ -61,7 +61,40 @@ public sealed class ConfigStoreTests : IDisposable
     {
         var config = LoadFrom("{ not json");
 
-        Assert.Equal(PrTrayConfig.Default.WatchedRepositories, config.WatchedRepositories);
+        Assert.Equal(PrTrayConfig.Default.Repositories, config.Repositories);
         Assert.Equal("{ not json", File.ReadAllText(ConfigPath));
+    }
+
+    [Fact]
+    public void Legacy_watched_repositories_key_is_still_read()
+    {
+        var config = LoadFrom("""{ "watchedRepositories": ["rasmusrim/ku"] }""");
+
+        Assert.Equal(new[] { "rasmusrim/ku" }, config.Repositories);
+    }
+
+    [Fact]
+    public void Saved_config_round_trips_under_the_new_key()
+    {
+        var store = new ConfigStore(ConfigPath);
+        var config = new PrTrayConfig(["rasmusrim/ku", "acme/widgets"], 300, "gh");
+
+        store.Save(config);
+
+        Assert.Equal(config.Repositories, store.LoadOrCreate().Repositories);
+        Assert.Equal(300, store.LoadOrCreate().PollIntervalSeconds);
+        Assert.DoesNotContain("watchedRepositories", File.ReadAllText(ConfigPath));
+    }
+
+    [Theory]
+    [InlineData("acme/widgets", true)]
+    [InlineData("rasmusrim/Shopify2Fiken", true)]
+    [InlineData("justname", false)]
+    [InlineData("foo bar/baz", false)]
+    [InlineData("owner/repo\" is:closed", false)]
+    [InlineData("", false)]
+    public void Repository_name_validation(string repository, bool expected)
+    {
+        Assert.Equal(expected, ConfigStore.IsValidRepositoryName(repository));
     }
 }

@@ -9,10 +9,13 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
     private readonly SemaphoreSlim pollLock = new(1, 1);
     private readonly CancellationTokenSource stopping = new();
     private SeenState seenState = seenStore.Load();
+    private volatile PrTrayConfig currentConfig = config;
 
     public event Action<PollOutcome>? Polled;
 
     public void Start() => _ = RunLoopAsync();
+
+    public void UpdateConfig(PrTrayConfig newConfig) => currentConfig = newConfig;
 
     public async Task RefreshNowAsync()
     {
@@ -43,7 +46,7 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
         try
         {
             await RefreshNowAsync();
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(config.PollIntervalSeconds), timeProvider);
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(currentConfig.PollIntervalSeconds), timeProvider);
             while (await timer.WaitForNextTickAsync(stopping.Token))
                 await RefreshNowAsync();
         }
@@ -54,7 +57,7 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
 
     private async Task<PollOutcome> PollOnceAsync()
     {
-        var result = await ghClient.FetchAsync(config, stopping.Token);
+        var result = await ghClient.FetchAsync(currentConfig, stopping.Token);
         if (result is not GhResult.Success success)
             return new PollOutcome(result, [], timeProvider.GetUtcNow());
 

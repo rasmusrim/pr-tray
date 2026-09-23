@@ -39,4 +39,16 @@ public class GhQueryBuilderTests
         foreach (var alias in GhQueryBuilder.GroupByAlias.Keys)
             Assert.Contains($"{alias}: search(", query);
     }
+
+    [Fact]
+    public void Repository_filter_is_applied_to_every_search()
+    {
+        var query = GhQueryBuilder.Build(["acme/widgets"], MergedSince);
+
+        Assert.Contains("mine: search(query: \"is:pr is:open archived:false author:@me repo:acme/widgets\"", query);
+        Assert.Contains("requested: search(query: \"is:pr is:open archived:false review-requested:@me repo:acme/widgets\"", query);
+        Assert.Contains("reviewed: search(query: \"is:pr is:open archived:false reviewed-by:@me repo:acme/widgets\"", query);
+        Assert.Contains("mergedMine: search(query: \"is:pr is:merged merged:>=2026-09-21 author:@me repo:acme/widgets\"", query);
+        Assert.Contains("mergedReviewed: search(query: \"is:pr is:merged merged:>=2026-09-21 reviewed-by:@me repo:acme/widgets\"", query);
+    }
 }

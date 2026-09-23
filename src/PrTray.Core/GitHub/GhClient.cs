@@ -15,7 +15,7 @@ public sealed class GhClient(IProcessRunner processRunner, TimeProvider timeProv
     {
         var now = timeProvider.GetUtcNow();
         var mergedSince = DateOnly.FromDateTime(now.UtcDateTime).AddDays(-MergedLookbackDays);
-        var query = GhQueryBuilder.Build(config.WatchedRepositories, mergedSince);
+        var query = GhQueryBuilder.Build(config.Repositories, mergedSince);
         var effectiveTimeout = timeout ?? DefaultTimeout;
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(effectiveTimeout);
