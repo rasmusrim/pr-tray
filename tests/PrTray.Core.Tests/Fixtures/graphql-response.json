@@ -1,0 +1,102 @@
+{
+  "data": {
+    "viewer": { "login": "rasmusrim" },
+    "mine": {
+      "nodes": [
+        {
+          "id": "PR_A", "number": 72, "title": "Legg til historikk",
+          "url": "https://github.com/acme/widgets/pull/72",
+          "state": "OPEN", "isDraft": false,
+          "createdAt": "2026-09-23T08:00:00Z", "mergedAt": null,
+          "author": { "login": "rasmusrim" },
+          "repository": { "nameWithOwner": "acme/widgets" },
+          "reviewDecision": "APPROVED",
+          "commits": { "nodes": [ { "commit": { "oid": "aaa111", "committedDate": "2026-09-23T08:00:00Z" } } ] },
+          "reviews": { "nodes": [
+            { "id": "R_A1", "state": "APPROVED", "submittedAt": "2026-09-23T11:00:00Z", "author": { "__typename": "User", "login": "teammate" }, "commit": { "oid": "aaa111" } }
+          ] }
+        }
+      ]
+    },
+    "requested": { "nodes": [] },
+    "reviewed": {
+      "nodes": [
+        {
+          "id": "PR_B", "number": 70, "title": "Ny SMS-flyt & <varsler>",
+          "url": "https://github.com/acme/widgets/pull/70",
+          "state": "OPEN", "isDraft": false,
+          "createdAt": "2026-09-22T09:00:00Z", "mergedAt": null,
+          "author": { "login": "teammate" },
+          "repository": { "nameWithOwner": "acme/widgets" },
+          "reviewDecision": "CHANGES_REQUESTED",
+          "commits": { "nodes": [ { "commit": { "oid": "bbb222", "committedDate": "2026-09-23T10:30:00Z" } } ] },
+          "reviews": { "nodes": [
+            { "id": "R_B1", "state": "COMMENTED", "submittedAt": "2026-09-22T10:00:00Z", "author": { "__typename": "Bot", "login": "copilot-pull-request-reviewer" }, "commit": { "oid": "bbb111" } },
+            { "id": "R_B2", "state": "CHANGES_REQUESTED", "submittedAt": "2026-09-22T15:00:00Z", "author": { "__typename": "User", "login": "rasmusrim" }, "commit": { "oid": "bbb111" } }
+          ] }
+        }
+      ]
+    },
+    "watched": {
+      "nodes": [
+        {
+          "id": "PR_B", "number": 70, "title": "Ny SMS-flyt & <varsler>",
+          "url": "https://github.com/acme/widgets/pull/70",
+          "state": "OPEN", "isDraft": false,
+          "createdAt": "2026-09-22T09:00:00Z", "mergedAt": null,
+          "author": { "login": "teammate" },
+          "repository": { "nameWithOwner": "acme/widgets" },
+          "reviewDecision": "CHANGES_REQUESTED",
+          "commits": { "nodes": [ { "commit": { "oid": "bbb222", "committedDate": "2026-09-23T10:30:00Z" } } ] },
+          "reviews": { "nodes": [
+            { "id": "R_B1", "state": "COMMENTED", "submittedAt": "2026-09-22T10:00:00Z", "author": { "__typename": "Bot", "login": "copilot-pull-request-reviewer" }, "commit": { "oid": "bbb111" } },
+            { "id": "R_B2", "state": "CHANGES_REQUESTED", "submittedAt": "2026-09-22T15:00:00Z", "author": { "__typename": "User", "login": "rasmusrim" }, "commit": { "oid": "bbb111" } }
+          ] }
+        },
+        {
+          "id": "PR_C", "number": 73, "title": "Oppdater avhengigheter",
+          "url": "https://github.com/acme/widgets/pull/73",
+          "state": "OPEN", "isDraft": true,
+          "createdAt": "2026-09-23T11:30:00Z", "mergedAt": null,
+          "author": null,
+          "repository": { "nameWithOwner": "acme/widgets" },
+          "reviewDecision": null,
+          "commits": { "nodes": [] },
+          "reviews": { "nodes": [] }
+        },
+        {}
+      ]
+    },
+    "mergedMine": {
+      "nodes": [
+        {
+          "id": "PR_D", "number": 71, "title": "Fiks innlogging",
+          "url": "https://github.com/acme/widgets/pull/71",
+          "state": "MERGED", "isDraft": false,
+          "createdAt": "2026-09-22T08:00:00Z", "mergedAt": "2026-09-23T10:07:52Z",
+          "author": { "login": "rasmusrim" },
+          "repository": { "nameWithOwner": "acme/widgets" },
+          "reviewDecision": "APPROVED",
+          "commits": { "nodes": [ { "commit": { "oid": "ddd444", "committedDate": "2026-09-22T08:00:00Z" } } ] },
+          "reviews": { "nodes": [] }
+        }
+      ]
+    },
+    "mergedReviewed": { "nodes": [] },
+    "mergedWatched": {
+      "nodes": [
+        {
+          "id": "PR_D", "number": 71, "title": "Fiks innlogging",
+          "url": "https://github.com/acme/widgets/pull/71",
+          "state": "MERGED", "isDraft": false,
+          "createdAt": "2026-09-22T08:00:00Z", "mergedAt": "2026-09-23T10:07:52Z",
+          "author": { "login": "rasmusrim" },
+          "repository": { "nameWithOwner": "acme/widgets" },
+          "reviewDecision": "APPROVED",
+          "commits": { "nodes": [ { "commit": { "oid": "ddd444", "committedDate": "2026-09-22T08:00:00Z" } } ] },
+          "reviews": { "nodes": [] }
+        }
+      ]
+    }
+  }
+}
