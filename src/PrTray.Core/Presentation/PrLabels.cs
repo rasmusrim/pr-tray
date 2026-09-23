@@ -16,6 +16,15 @@ public static class PrLabels
         _ => "⏳",
     };
 
+    public static string StatusText(PullRequest pullRequest) => pullRequest switch
+    {
+        { State: PrState.Merged } => "Merget",
+        { IsDraft: true } => "Utkast",
+        { ReviewDecision: ReviewDecision.ChangesRequested } => "Endringer bedt om",
+        { ReviewDecision: ReviewDecision.Approved } => "Godkjent",
+        _ => "Venter på review",
+    };
+
     public static string MenuLabel(PullRequest pullRequest) =>
         EscapeAccessKeys($"{StatusEmoji(pullRequest)} {pullRequest.DisplayName}  {Truncate(pullRequest.Title, MaxTitleLength)}");
 

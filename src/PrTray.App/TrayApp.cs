@@ -4,6 +4,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using PrTray.App.Notifications;
+using PrTray.App.Overview;
+using PrTray.App.Settings;
 using PrTray.Core.GitHub;
 using PrTray.Core.Models;
 using PrTray.Core.Polling;
@@ -16,9 +18,12 @@ public sealed class TrayApp : Application
 {
     private readonly NativeMenu menu = new();
     private readonly INotifier notifier = NotifierFactory.Create();
+    private readonly ConfigStore configStore = new(AppPaths.ConfigFile);
+    private PrTrayConfig config = PrTrayConfig.Default;
     private Poller? poller;
     private TrayIcon? trayIcon;
     private OverviewWindow? overviewWindow;
+    private SettingsWindow? settingsWindow;
     private PrSnapshot? lastSnapshot;
     private GhResult? latestResult;
 
@@ -26,7 +31,7 @@ public sealed class TrayApp : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        var config = new ConfigStore(AppPaths.ConfigFile).LoadOrCreate();
+        config = configStore.LoadOrCreate();
         poller = new Poller(new GhClient(new ProcessRunner(), TimeProvider.System), new SeenStore(AppPaths.SeenFile), config, TimeProvider.System);
         poller.Polled += outcome => Dispatcher.UIThread.Post(() => OnPolled(outcome));
 
@@ -41,7 +46,7 @@ public sealed class TrayApp : Application
 
     private PrSections? CurrentSections => lastSnapshot is null ? null : PrSections.From(lastSnapshot);
 
-    private TrayMenuActions MenuActions => new(UrlOpener.Open, ShowOverview, () => _ = poller?.RefreshNowAsync(), Quit);
+    private TrayMenuActions MenuActions => new(UrlOpener.Open, ShowOverview, ShowSettings, () => _ = poller?.RefreshNowAsync(), Quit);
 
     private void OnPolled(PollOutcome outcome)
     {
@@ -60,15 +65,34 @@ public sealed class TrayApp : Application
         trayIcon.ToolTipText = sections is null ? "PrTray" : $"PrTray – {sections.Mine.Count} mine, {sections.ToReview.Count} til review";
         TrayMenuBuilder.Populate(menu, sections, latestResult, lastSnapshot?.FetchedAt, MenuActions);
         if (overviewWindow?.IsVisible == true)
-            overviewWindow.ShowSections(sections, TimeProvider.System.GetUtcNow());
+            overviewWindow.ShowSections(sections, lastSnapshot?.FetchedAt, TimeProvider.System.GetUtcNow());
     }
 
     private void ShowOverview()
     {
         overviewWindow ??= new OverviewWindow(UrlOpener.Open);
-        overviewWindow.ShowSections(CurrentSections, TimeProvider.System.GetUtcNow());
+        overviewWindow.ShowSections(CurrentSections, lastSnapshot?.FetchedAt, TimeProvider.System.GetUtcNow());
         overviewWindow.Show();
         overviewWindow.Activate();
+    }
+
+    private void ShowSettings()
+    {
+        if (settingsWindow is null)
+        {
+            settingsWindow = new SettingsWindow(config.Repositories, SaveRepositories);
+            settingsWindow.Closed += (_, _) => settingsWindow = null;
+        }
+        settingsWindow.Show();
+        settingsWindow.Activate();
+    }
+
+    private void SaveRepositories(IReadOnlyList<string> repositories)
+    {
+        config = config with { Repositories = repositories };
+        configStore.Save(config);
+        poller?.UpdateConfig(config);
+        _ = poller?.RefreshNowAsync();
     }
 
     private void Quit()

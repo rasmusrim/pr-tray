@@ -39,4 +39,17 @@ public class PrLabelsTests
         Assert.Equal("Henting feilet: HTTP 502", PrLabels.Problem(new GhResult.Failed("HTTP 502")));
         Assert.Null(PrLabels.Problem(new GhResult.Success(Snapshot())));
     }
+
+    [Theory]
+    [InlineData(PrState.Merged, false, ReviewDecision.Approved, "Merget")]
+    [InlineData(PrState.Open, true, ReviewDecision.Approved, "Utkast")]
+    [InlineData(PrState.Open, false, ReviewDecision.ChangesRequested, "Endringer bedt om")]
+    [InlineData(PrState.Open, false, ReviewDecision.Approved, "Godkjent")]
+    [InlineData(PrState.Open, false, ReviewDecision.ReviewRequired, "Venter på review")]
+    public void Status_text_reflects_state(PrState state, bool isDraft, ReviewDecision decision, string expected)
+    {
+        var pullRequest = Create(PrGroups.Mine) with { State = state, IsDraft = isDraft, ReviewDecision = decision };
+
+        Assert.Equal(expected, PrLabels.StatusText(pullRequest));
+    }
 }

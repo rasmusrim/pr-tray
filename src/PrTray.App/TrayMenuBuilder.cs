@@ -23,6 +23,7 @@ public static class TrayMenuBuilder
         }
         menu.Items.Add(new NativeMenuItemSeparator());
         AddAction(menu, "Vis oversikt…", actions.ShowOverview);
+        AddAction(menu, "Innstillinger…", actions.ShowSettings);
         AddAction(menu, "Oppdater nå", actions.RefreshNow);
         AddDisabled(menu, LastUpdatedText(lastSuccessAt, problem is not null));
         AddAction(menu, "Avslutt", actions.Quit);
