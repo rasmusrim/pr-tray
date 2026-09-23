@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
+using PrTray.App.Notifications;
 using PrTray.Core.GitHub;
 using PrTray.Core.Models;
 using PrTray.Core.Polling;
@@ -14,6 +15,7 @@ namespace PrTray.App;
 public sealed class TrayApp : Application
 {
     private readonly NativeMenu menu = new();
+    private readonly INotifier notifier = NotifierFactory.Create();
     private Poller? poller;
     private TrayIcon? trayIcon;
     private PrSnapshot? lastSnapshot;
@@ -45,6 +47,8 @@ public sealed class TrayApp : Application
         latestResult = outcome.Result;
         if (outcome.Result is GhResult.Success success)
             lastSnapshot = success.Snapshot;
+        foreach (var message in NotificationTexts.ForBatch(outcome.Events))
+            notifier.Show(message);
         Refresh();
     }
 
@@ -63,6 +67,7 @@ public sealed class TrayApp : Application
     private void Quit()
     {
         poller?.Dispose();
+        notifier.Dispose();
         (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
     }
 }
