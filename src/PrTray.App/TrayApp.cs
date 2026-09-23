@@ -18,6 +18,7 @@ public sealed class TrayApp : Application
     private readonly INotifier notifier = NotifierFactory.Create();
     private Poller? poller;
     private TrayIcon? trayIcon;
+    private OverviewWindow? overviewWindow;
     private PrSnapshot? lastSnapshot;
     private GhResult? latestResult;
 
@@ -58,10 +59,16 @@ public sealed class TrayApp : Application
         trayIcon!.Icon = TrayIconFactory.Create(latestResult is null ? TrayStatus.Neutral : TrayStatusCalculator.Calculate(latestResult, sections));
         trayIcon.ToolTipText = sections is null ? "PrTray" : $"PrTray – {sections.Mine.Count} mine, {sections.ToReview.Count} til review";
         TrayMenuBuilder.Populate(menu, sections, latestResult, lastSnapshot?.FetchedAt, MenuActions);
+        if (overviewWindow?.IsVisible == true)
+            overviewWindow.ShowSections(sections, TimeProvider.System.GetUtcNow());
     }
 
     private void ShowOverview()
     {
+        overviewWindow ??= new OverviewWindow(UrlOpener.Open);
+        overviewWindow.ShowSections(CurrentSections, TimeProvider.System.GetUtcNow());
+        overviewWindow.Show();
+        overviewWindow.Activate();
     }
 
     private void Quit()
