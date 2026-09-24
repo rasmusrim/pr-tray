@@ -96,4 +96,34 @@ public sealed class PollerTests : IDisposable
         Assert.Contains("repo:rasmusrim/ku", query);
         Assert.DoesNotContain("repo:acme/widgets", query);
     }
+
+    [Fact]
+    public async Task Pull_requests_first_seen_after_a_repository_change_are_absorbed_silently()
+    {
+        var withNewPullRequest = FixtureJson.Replace("\"PR_A\"", "\"PR_Z\"").Replace("\"R_A1\"", "\"R_Z1\"");
+        using var poller = CreatePoller(FakeProcessRunner.ReturningInOrder(
+            FakeProcessRunner.Ok(FixtureJson),
+            FakeProcessRunner.Ok(withNewPullRequest)));
+
+        await poller.RefreshNowAsync();
+        poller.UpdateConfig(PrTrayConfig.Default with { Repositories = ["rasmusrim/ku"] });
+        await poller.RefreshNowAsync();
+
+        Assert.Empty(outcomes[1].Events);
+        Assert.Contains("review:R_Z1", Store.Load().Keys);
+    }
+
+    [Fact]
+    public async Task Pull_requests_first_seen_without_a_repository_change_are_reported()
+    {
+        var withNewPullRequest = FixtureJson.Replace("\"PR_A\"", "\"PR_Z\"").Replace("\"R_A1\"", "\"R_Z1\"");
+        using var poller = CreatePoller(FakeProcessRunner.ReturningInOrder(
+            FakeProcessRunner.Ok(FixtureJson),
+            FakeProcessRunner.Ok(withNewPullRequest)));
+
+        await poller.RefreshNowAsync();
+        await poller.RefreshNowAsync();
+
+        Assert.Equal(PrEventKind.Approved, Assert.Single(outcomes[1].Events).Kind);
+    }
 }

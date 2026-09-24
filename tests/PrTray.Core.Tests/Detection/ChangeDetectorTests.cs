@@ -224,4 +224,27 @@ public class ChangeDetectorTests
 
         Assert.Empty(events);
     }
+
+    [Fact]
+    public void Silent_pull_requests_are_recorded_without_reporting()
+    {
+        var pullRequest = Create(PrGroups.ReviewRequested | PrGroups.Watched);
+
+        var result = ChangeDetector.Detect(Snapshot(pullRequest), NothingSeen, Now, silentPullRequestIds: new HashSet<string> { "PR_1" });
+
+        Assert.Empty(result.Events);
+        Assert.Contains("requested:PR_1:head1", result.SeenKeys);
+    }
+
+    [Fact]
+    public void New_commits_pushed_long_after_they_were_committed_are_still_reported()
+    {
+        var pullRequest = Create(PrGroups.ReviewedByMe) with
+        {
+            HeadCommittedAt = Now.AddDays(-3),
+            Reviews = [ReviewBy(Me, ReviewState.ChangesRequested, commitOid: "old")],
+        };
+
+        Assert.Equal(PrEventKind.NewCommitsSinceUnapprovedReview, Assert.Single(EventsFor(pullRequest)).Kind);
+    }
 }

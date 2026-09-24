@@ -11,6 +11,8 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
     private SeenState seenState = seenStore.Load();
     private volatile PrTrayConfig currentConfig = config;
     private bool refreshRequested;
+    private IReadOnlyList<string>? previousRepositories;
+    private HashSet<string> previousPullRequestIds = [];
 
     public event Action<PollOutcome>? Polled;
 
@@ -70,11 +72,19 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
 
     private async Task<PollOutcome> PollOnceAsync()
     {
-        var result = await ghClient.FetchAsync(currentConfig, stopping.Token);
+        var configForThisPoll = currentConfig;
+        var result = await ghClient.FetchAsync(configForThisPoll, stopping.Token);
         if (result is not GhResult.Success success)
             return new PollOutcome(result, [], timeProvider.GetUtcNow());
 
-        var detection = ChangeDetector.Detect(success.Snapshot, seenState, timeProvider.GetUtcNow());
+        var currentPullRequestIds = success.Snapshot.PullRequests.Select(pullRequest => pullRequest.Id).ToHashSet();
+        var repositoriesChanged = previousRepositories is not null
+            && !configForThisPoll.Repositories.SequenceEqual(previousRepositories, StringComparer.OrdinalIgnoreCase);
+        // Widening the repository filter reveals PRs whose history was never seen; absorb them instead of flooding.
+        var silentPullRequestIds = repositoriesChanged ? currentPullRequestIds.Except(previousPullRequestIds).ToHashSet() : null;
+        previousRepositories = configForThisPoll.Repositories;
+        previousPullRequestIds = currentPullRequestIds;
+        var detection = ChangeDetector.Detect(success.Snapshot, seenState, timeProvider.GetUtcNow(), silentPullRequestIds);
         seenStore.Save(detection.SeenKeys);
         seenState = new SeenState(detection.SeenKeys, IsFirstRun: false);
         return new PollOutcome(result, detection.Events, timeProvider.GetUtcNow());

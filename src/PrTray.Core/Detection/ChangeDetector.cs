@@ -13,7 +13,7 @@ public static class ChangeDetector
     private static readonly HashSet<PrEventKind> RedundantWithReviewRequest =
         [PrEventKind.Opened, PrEventKind.NewCommitsSinceUnapprovedReview];
 
-    public static DetectionResult Detect(PrSnapshot snapshot, SeenState seen, DateTimeOffset now)
+    public static DetectionResult Detect(PrSnapshot snapshot, SeenState seen, DateTimeOffset now, IReadOnlySet<string>? silentPullRequestIds = null)
     {
         var seenKeys = new HashSet<string>(seen.Keys);
         var events = new List<PrEvent>();
@@ -21,7 +21,8 @@ public static class ChangeDetector
         foreach (var candidate in candidates)
         {
             var isUnseen = seenKeys.Add(candidate.Key);
-            if (isUnseen && !seen.IsFirstRun && IsFresh(candidate.OccurredAt, now))
+            var isSilent = seen.IsFirstRun || silentPullRequestIds?.Contains(candidate.Event.PullRequest.Id) == true;
+            if (isUnseen && !isSilent && IsFresh(candidate.OccurredAt, now))
                 events.Add(candidate.Event);
         }
         return new DetectionResult(SuppressRedundant(events), seenKeys);
@@ -43,7 +44,7 @@ public static class ChangeDetector
             yield return new Candidate($"requested:{pullRequest.Id}:{pullRequest.HeadCommitOid}", null, new PrEvent(PrEventKind.ReviewRequested, pullRequest, pullRequest.AuthorLogin));
 
         if (pullRequest.AuthorLogin != viewerLogin && pullRequest.IsIn(NewCommitsScope) && pullRequest.HasNewCommitsSinceUnapprovedReview())
-            yield return new Candidate($"recommit:{pullRequest.Id}:{pullRequest.HeadCommitOid}", pullRequest.HeadCommittedAt, new PrEvent(PrEventKind.NewCommitsSinceUnapprovedReview, pullRequest, pullRequest.AuthorLogin));
+            yield return new Candidate($"recommit:{pullRequest.Id}:{pullRequest.HeadCommitOid}", null, new PrEvent(PrEventKind.NewCommitsSinceUnapprovedReview, pullRequest, pullRequest.AuthorLogin));
 
         foreach (var review in pullRequest.Reviews.Where(review => review.AuthorLogin != viewerLogin))
         {
