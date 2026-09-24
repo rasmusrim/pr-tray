@@ -37,4 +37,18 @@ public class PrSectionsTests
 
         Assert.Equal(new[] { "NEW", "OLD" }, sections.Watched.Select(pullRequest => pullRequest.Id));
     }
+
+    [Fact]
+    public void Watched_pr_with_new_commits_after_someone_elses_review_is_not_to_review_for_me()
+    {
+        var pullRequest = Create(PrGroups.Watched) with
+        {
+            Reviews = [ReviewBy("third-party", ReviewState.Commented, commitOid: "old")],
+        };
+
+        var sections = PrSections.From(Snapshot(pullRequest));
+
+        Assert.Empty(sections.ToReview);
+        Assert.Single(sections.Watched);
+    }
 }

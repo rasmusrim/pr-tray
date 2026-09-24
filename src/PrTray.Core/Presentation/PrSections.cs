@@ -18,7 +18,7 @@ public sealed record PrSections(
         var toReview = open
             .Where(pullRequest => !pullRequest.IsIn(PrGroups.Mine))
             .Where(pullRequest => pullRequest.IsIn(PrGroups.ReviewRequested)
-                || pullRequest.HasNewCommitsSinceUnapprovedReview())
+                || (pullRequest.IsIn(PrGroups.ReviewedByMe) && pullRequest.HasNewCommitsSinceUnapprovedReview()))
             .ToList();
         var watched = open
             .Where(pullRequest => pullRequest.IsIn(PrGroups.Watched))
