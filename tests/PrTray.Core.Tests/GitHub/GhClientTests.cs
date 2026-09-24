@@ -21,7 +21,7 @@ public class GhClientTests
     }
 
     [Fact]
-    public async Task Calls_gh_api_graphql_with_query_including_watched_repositories()
+    public async Task Calls_gh_api_graphql_with_query_including_configured_repositories()
     {
         var runner = FakeProcessRunner.Returning(FakeProcessRunner.Ok(Fixtures.Read("graphql-response.json")));
 

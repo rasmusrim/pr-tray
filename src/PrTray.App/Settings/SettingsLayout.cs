@@ -17,7 +17,7 @@ public static class SettingsLayout
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "Repoer", FontSize = 22, FontWeight = FontWeight.SemiBold },
+                new TextBlock { Text = "Overvåkede repoer", FontSize = 22, FontWeight = FontWeight.SemiBold },
                 new TextBlock
                 {
                     Text = "Bare PR-er i disse repoene vises og varsles. Du får også varsel om nye PR-er, godkjenninger og merger i dem.",

@@ -7,7 +7,7 @@ public class GhQueryBuilderTests
     private static readonly DateOnly MergedSince = new(2026, 9, 21);
 
     [Fact]
-    public void Query_without_watched_repositories_has_no_watched_aliases()
+    public void Query_without_repositories_has_no_watched_aliases()
     {
         var query = GhQueryBuilder.Build([], MergedSince);
 
@@ -23,7 +23,7 @@ public class GhQueryBuilderTests
     }
 
     [Fact]
-    public void Query_with_watched_repositories_lists_each_repo()
+    public void Query_with_repositories_lists_each_repo()
     {
         var query = GhQueryBuilder.Build(["acme/widgets", "rasmusrim/ku"], MergedSince);
 

@@ -6,6 +6,8 @@ Gitify fungerte dårlig (usynlig svart ikon på GNOME, tung Electron-app). Som m
 
 **Brukerens krav (sagt):** OS-agnostisk, lite ikon i system tray, bruker `gh`. Tray-meny med mine PR-er + review-forespørsler til meg. Både native meny og et oversiktsvindu. .NET + Avalonia. Kun for meg, lokalt bygg. Varsler for:
 
+Repo-listen i config (se Konfigurasjon) er et **filter på alt**: bare PR-er i disse repoene vises og varsles, og de samme repoene er «overvåkede repoer». Tom liste = ingen filter og ingen overvåkede repoer.
+
 1. **PR opprettet** – alle nye PR-er (fra andre) i utvalgte repoer.
 2. **Nye commits etter review uten godkjenning** – PR (ikke min egen) der siste review fra et menneske som ikke er forfatteren er *changes requested* eller *commented*, og head-commit har endret seg siden den reviewen. Bot-reviews (f.eks. Copilot) og forfatterens egne reviews ignoreres. Gjelder PR-er jeg har reviewet, er bedt om å reviewe, eller som ligger i utvalgte repoer.
 3. **PR godkjent** – alle: mine PR-er, PR-er jeg har reviewet, og PR-er i utvalgte repoer.
@@ -25,8 +27,10 @@ Solution `~/repos/PrTray`, .NET 10 (SDK 10.0.112), Avalonia 12.1.3 (tray-ikon ve
 `~/.config/PrTray/config.json` (`%APPDATA%\PrTray\` på Windows, `~/Library/Application Support/PrTray/` på macOS). Opprettes med standardverdier hvis den mangler:
 
 ```json
-{ "watchedRepositories": ["acme/widgets"], "pollIntervalSeconds": 120 }
+{ "repositories": ["acme/widgets"], "pollIntervalSeconds": 120, "ghPath": "gh" }
 ```
+
+Den eldre nøkkelen `watchedRepositories` leses fortsatt; lagring skriver `repositories`. Repo-listen redigeres i appen via menyvalget «Innstillinger…» (vindu med liste, «Fjern», tekstfelt for `eier/repo` eller GitHub-lenke + «Legg til», «Avbryt»/«Lagre»). Et repo sjekkes med `gh api repos/<eier>/<repo>` før det legges til. «Lagre» skriver config, oppdaterer polleren og henter på nytt med en gang.
 
 ### PrTray.Core (net10.0, ingen UI)
 - `GhClient` – kjører `gh api graphql -f query=...` via `Process`, parser med System.Text.Json. Én spørring, felles fragment `PrFields` (`id number title url state isDraft createdAt mergedAt author{login} repository{nameWithOwner} reviewDecision commits(last:1){nodes{commit{oid}}} reviews(last:30){nodes{id state submittedAt author{__typename login} commit{oid}}}`), aliaser:
@@ -34,6 +38,7 @@ Solution `~/repos/PrTray`, .NET 10 (SDK 10.0.112), Avalonia 12.1.3 (tray-ikon ve
   - `requested`: `is:pr is:open review-requested:@me archived:false`
   - `reviewed`: `is:pr is:open reviewed-by:@me archived:false`
   - `watched`: `is:pr is:open archived:false repo:A repo:B …` (utelates hvis listen er tom)
+  - Når listen ikke er tom, får **alle** søkene `repo:A repo:B …` (GitHub OR-er flere `repo:`).
   - `mergedMine`, `mergedReviewed`, `mergedWatched`: som over med `is:merged merged:>=<i dag − 2 døgn>`
   - `viewer{login}`
   - Alle feltene er verifisert mot GitHub i denne sesjonen.
@@ -50,17 +55,17 @@ Solution `~/repos/PrTray`, .NET 10 (SDK 10.0.112), Avalonia 12.1.3 (tray-ikon ve
   | `ReviewRequested` | I `requested` | `requested:<prId>:<headOid>` |
   | `Merged` | `State == MERGED` | `merged:<prId>` |
 
-  Hvis samme PR gir `ReviewRequested` sammen med `Opened` eller `NewCommitsSinceUnapprovedReview` i én runde, vises bare `ReviewRequested` (alle nøkler markeres sett). Hendelser eldre enn 24 t markeres sett uten varsel (hindrer flom når et repo legges til).
+  Hvis samme PR gir `ReviewRequested` sammen med `Opened` eller `NewCommitsSinceUnapprovedReview` i én runde, vises bare `ReviewRequested` (alle nøkler markeres sett). Hendelser med tidsstempel eldre enn 24 t (opprettet, review, merget) markeres sett uten varsel. `ReviewRequested` og `NewCommitsSinceUnapprovedReview` har ikke noe pålitelig tidsstempel (commit-dato ≠ push-tid) og varsles uansett alder. Når repo-listen endres, registreres PR-er som dukker opp for første gang stille, så et nytt repo ikke spiller av gamle hendelser.
 - `SeenStore` – JSON i `~/.local/state/PrTray/seen.json` (`XDG_STATE_HOME`-fallback), `%LOCALAPPDATA%\PrTray\` på Windows. Manglende/tom fil ⇒ første kjøring registrerer alle nøkler uten å varsle. Korrupt fil ⇒ behandles som første kjøring.
 - `Poller` – `PeriodicTimer` (fra config) + `RefreshNowAsync()`; eksponerer `SnapshotUpdated` og `EventsDetected`. Aldri to samtidige kall.
 
 ### PrTray.App (Avalonia 12, net10.0)
 - `App` med `TrayIcon` + `NativeMenu`, ingen hovedvindu ved oppstart (`ShutdownMode.OnExplicitShutdown`).
-- Meny (bygges på nytt ved hvert snapshot): seksjonene «Mine PR-er», «Til review» (requested + nye commits etter review uten godkjenning), «Overvåkede repoer»; hver linje `✅/❌/⏳ repo#nr tittel` → åpner URL. Deretter «Vis oversikt…», «Oppdater nå», deaktivert «Sist oppdatert HH:mm» (+ «(feilet)»), «Avslutt». Feiltilstand: «gh ikke innlogget – kjør gh auth login» / «gh ikke funnet».
+- Meny (bygges på nytt ved hvert snapshot): seksjonene «Mine PR-er», «Til review» (requested + PR-er jeg har reviewet som har fått nye commits etter review uten godkjenning), «Overvåkede repoer»; hver linje `✅/❌/⏳ repo#nr tittel` → åpner URL. Deretter «Vis oversikt…», «Oppdater nå», deaktivert «Sist oppdatert HH:mm» (+ «(feilet)»), «Avslutt». Feiltilstand: «gh ikke innlogget – kjør gh auth login» / «gh ikke funnet».
 - `OverviewWindow` – liste med repo, tittel, status, forfatter, alder; lukk = skjul.
 - `TrayIconFactory` – tegner ikonet i kode (ingen PNG-filer): sirkel med lys kontur så den synes på mørk og lys topplinje. Farge: grå (feil), rød (noe krever handling fra meg: changes requested på min PR, review-forespørsel, nye commits etter review uten godkjenning), grønn (min PR godkjent), nøytral ellers.
 - `INotifier` – egen implementasjon per OS (DesktopNotifications-pakken avhenger av Avalonia 0.10 og kan ikke brukes):
-  - Linux: `notify-send --action=open=Åpne --wait` (verifisert her), klikk åpner PR.
+  - Linux: `org.freedesktop.Notifications` direkte over D-Bus (`Tmds.DBus.Protocol`). `notify-send` 0.8.8 dropper handlinger på GNOME 50, og GNOME sender `ActionInvoked` bare til tilkoblingen som laget varselet. Klikk på varselet eller «Åpne» åpner PR-en.
   - macOS: `osascript -e 'display notification …'` (uten klikk-handling).
   - Windows: PowerShell-toast via `Windows.UI.Notifications` (uten klikk-handling).
 - `UrlOpener` – `Process.Start` med `UseShellExecute=true`.
