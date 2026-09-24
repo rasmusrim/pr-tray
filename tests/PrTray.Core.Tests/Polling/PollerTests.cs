@@ -65,20 +65,22 @@ public sealed class PollerTests : IDisposable
     }
 
     [Fact]
-    public async Task Concurrent_refreshes_run_gh_only_once()
+    public async Task Refresh_requested_during_a_running_poll_runs_once_more_with_the_new_config()
     {
         var release = new TaskCompletionSource<ProcessResult>();
-        var runner = new FakeProcessRunner((_, _) => release.Task);
+        var callCount = 0;
+        var runner = new FakeProcessRunner((_, _) => ++callCount == 1 ? release.Task : Task.FromResult(FakeProcessRunner.Ok(FixtureJson)));
         using var poller = CreatePoller(runner);
 
-        var first = poller.RefreshNowAsync();
-        var second = poller.RefreshNowAsync();
-        await second;
+        var runningPoll = poller.RefreshNowAsync();
+        poller.UpdateConfig(PrTrayConfig.Default with { Repositories = ["rasmusrim/ku"] });
+        await poller.RefreshNowAsync();
         release.SetResult(FakeProcessRunner.Ok(FixtureJson));
-        await first;
+        await runningPoll;
 
-        Assert.Single(runner.Calls);
-        Assert.Single(outcomes);
+        Assert.Equal(2, runner.Calls.Count);
+        Assert.Equal(2, outcomes.Count);
+        Assert.Contains("repo:rasmusrim/ku", runner.Calls[1].Arguments[3]);
     }
 
     [Fact]

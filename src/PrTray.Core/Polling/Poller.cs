@@ -10,6 +10,7 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
     private readonly CancellationTokenSource stopping = new();
     private SeenState seenState = seenStore.Load();
     private volatile PrTrayConfig currentConfig = config;
+    private bool refreshRequested;
 
     public event Action<PollOutcome>? Polled;
 
@@ -19,19 +20,19 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
 
     public async Task RefreshNowAsync()
     {
-        if (!await pollLock.WaitAsync(0))
-            return;
-        try
+        Volatile.Write(ref refreshRequested, true);
+        // Re-check after releasing: a request that arrives just before Release would otherwise be lost.
+        while (Volatile.Read(ref refreshRequested) && await pollLock.WaitAsync(0))
         {
-            Polled?.Invoke(await PollOnceAsync());
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            Polled?.Invoke(new PollOutcome(new GhResult.Failed(exception.Message), [], timeProvider.GetUtcNow()));
-        }
-        finally
-        {
-            pollLock.Release();
+            try
+            {
+                while (Interlocked.Exchange(ref refreshRequested, false))
+                    Polled?.Invoke(await PollOnceSafelyAsync());
+            }
+            finally
+            {
+                pollLock.Release();
+            }
         }
     }
 
@@ -52,6 +53,18 @@ public sealed class Poller(GhClient ghClient, SeenStore seenStore, PrTrayConfig 
         }
         catch (OperationCanceledException)
         {
+        }
+    }
+
+    private async Task<PollOutcome> PollOnceSafelyAsync()
+    {
+        try
+        {
+            return await PollOnceAsync();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return new PollOutcome(new GhResult.Failed(exception.Message), [], timeProvider.GetUtcNow());
         }
     }
 
