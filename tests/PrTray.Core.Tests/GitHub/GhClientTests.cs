@@ -82,4 +82,35 @@ public class GhClientTests
         var failed = Assert.IsType<GhResult.Failed>(result);
         Assert.StartsWith("Uventet svar fra gh", failed.Message);
     }
+
+    [Fact]
+    public async Task Existing_repository_is_found_with_gh_api()
+    {
+        var runner = FakeProcessRunner.Returning(FakeProcessRunner.Ok(""));
+
+        var check = await new GhClient(runner, Clock).CheckRepositoryAsync(PrTrayConfig.Default, "rasmusrim/ku", CancellationToken.None);
+
+        Assert.Equal(RepositoryCheck.Exists, check);
+        Assert.Equal(new[] { "api", "repos/rasmusrim/ku", "--silent" }, Assert.Single(runner.Calls).Arguments);
+    }
+
+    [Fact]
+    public async Task Http_404_means_repository_not_found()
+    {
+        var runner = FakeProcessRunner.Returning(new ProcessResult(1, "", "gh: Not Found (HTTP 404)"));
+
+        var check = await new GhClient(runner, Clock).CheckRepositoryAsync(PrTrayConfig.Default, "rasmusrim/nope", CancellationToken.None);
+
+        Assert.Equal(RepositoryCheck.NotFound, check);
+    }
+
+    [Fact]
+    public async Task Other_failures_leave_the_repository_check_unknown()
+    {
+        var failing = FakeProcessRunner.Returning(new ProcessResult(1, "", "HTTP 502: Bad Gateway"));
+        var missingGh = new FakeProcessRunner((_, _) => throw new Win32Exception(2, "No such file or directory"));
+
+        Assert.Equal(RepositoryCheck.Unknown, await new GhClient(failing, Clock).CheckRepositoryAsync(PrTrayConfig.Default, "rasmusrim/ku", CancellationToken.None));
+        Assert.Equal(RepositoryCheck.Unknown, await new GhClient(missingGh, Clock).CheckRepositoryAsync(PrTrayConfig.Default, "rasmusrim/ku", CancellationToken.None));
+    }
 }

@@ -49,6 +49,23 @@ public sealed class GhClient(IProcessRunner processRunner, TimeProvider timeProv
         }
     }
 
+    public async Task<RepositoryCheck> CheckRepositoryAsync(PrTrayConfig config, string repository, CancellationToken cancellationToken)
+    {
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(timeout ?? DefaultTimeout);
+        try
+        {
+            var result = await processRunner.RunAsync(config.GhPath, ["api", $"repos/{repository}", "--silent"], timeoutSource.Token);
+            if (result.ExitCode == 0)
+                return RepositoryCheck.Exists;
+            return result.StandardError.Contains("HTTP 404") ? RepositoryCheck.NotFound : RepositoryCheck.Unknown;
+        }
+        catch (Exception exception) when (exception is Win32Exception || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            return RepositoryCheck.Unknown;
+        }
+    }
+
     private static string FirstLine(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "gh feilet uten melding";
 }

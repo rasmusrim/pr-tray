@@ -4,22 +4,30 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using PrTray.App.Styling;
+using PrTray.Core.GitHub;
 using PrTray.Core.Presentation;
 
 namespace PrTray.App.Settings;
 
 public sealed class SettingsWindow : Window
 {
+    private static readonly IBrush ErrorBrush = new SolidColorBrush(Color.Parse("#DA3633"));
+
     private readonly List<string> repositories;
     private readonly Action<IReadOnlyList<string>> saveRepositories;
+    private readonly Func<string, Task<RepositoryCheck>> checkRepository;
     private readonly StackPanel repositoryRows = new() { Spacing = 4 };
     private readonly TextBox newRepositoryInput = new() { PlaceholderText = "eier/repo eller GitHub-lenke" };
-    private readonly TextBlock validationMessage = new() { Foreground = new SolidColorBrush(Color.Parse("#DA3633")), IsVisible = false };
+    private readonly TextBlock validationMessage = new() { IsVisible = false, TextWrapping = TextWrapping.Wrap };
 
-    public SettingsWindow(IReadOnlyList<string> currentRepositories, Action<IReadOnlyList<string>> saveRepositories)
+    public SettingsWindow(
+        IReadOnlyList<string> currentRepositories,
+        Action<IReadOnlyList<string>> saveRepositories,
+        Func<string, Task<RepositoryCheck>> checkRepository)
     {
         repositories = currentRepositories.ToList();
         this.saveRepositories = saveRepositories;
+        this.checkRepository = checkRepository;
         Title = "PrTray – innstillinger";
         Width = 540;
         Height = 520;
@@ -42,17 +50,40 @@ public sealed class SettingsWindow : Window
         RenderRepositories();
     }
 
-    private void AddRepository()
+    private void AddRepository() => _ = AddRepositoryAsync();
+
+    private async Task AddRepositoryAsync()
     {
+        if (!newRepositoryInput.IsEnabled)
+            return;
         var candidate = RepositoryInput.Normalize(newRepositoryInput.Text ?? "");
         var problem = RepositoryInput.Problem(repositories, candidate);
-        validationMessage.Text = problem;
-        validationMessage.IsVisible = problem is not null;
         if (problem is not null)
+        {
+            ShowMessage(problem, isError: true);
             return;
+        }
+        newRepositoryInput.IsEnabled = false;
+        ShowMessage("Sjekker at repoet finnes…", isError: false);
+        var check = await checkRepository(candidate);
+        newRepositoryInput.IsEnabled = true;
+        if (check == RepositoryCheck.NotFound)
+        {
+            ShowMessage("Fant ikke repoet på GitHub, eller du har ikke tilgang til det.", isError: true);
+            return;
+        }
+        validationMessage.IsVisible = false;
         repositories.Add(candidate);
         newRepositoryInput.Text = "";
         RenderRepositories();
+    }
+
+    private void ShowMessage(string text, bool isError)
+    {
+        validationMessage.Text = text;
+        validationMessage.Foreground = isError ? ErrorBrush : null;
+        validationMessage.Opacity = isError ? 1 : 0.65;
+        validationMessage.IsVisible = true;
     }
 
     private void RemoveRepository(string repository)

@@ -20,6 +20,7 @@ public sealed class TrayApp : Application
     private readonly INotifier notifier = NotifierFactory.Create();
     private readonly ConfigStore configStore = new(AppPaths.ConfigFile);
     private PrTrayConfig config = PrTrayConfig.Default;
+    private readonly GhClient ghClient = new(new ProcessRunner(), TimeProvider.System);
     private Poller? poller;
     private TrayIcon? trayIcon;
     private OverviewWindow? overviewWindow;
@@ -32,7 +33,7 @@ public sealed class TrayApp : Application
     public override void OnFrameworkInitializationCompleted()
     {
         config = configStore.LoadOrCreate();
-        poller = new Poller(new GhClient(new ProcessRunner(), TimeProvider.System), new SeenStore(AppPaths.SeenFile), config, TimeProvider.System);
+        poller = new Poller(ghClient, new SeenStore(AppPaths.SeenFile), config, TimeProvider.System);
         poller.Polled += outcome => Dispatcher.UIThread.Post(() => OnPolled(outcome));
 
         trayIcon = new TrayIcon { Icon = TrayIconFactory.Create(TrayStatus.Neutral), ToolTipText = "PrTray", Menu = menu, IsVisible = true };
@@ -80,7 +81,10 @@ public sealed class TrayApp : Application
     {
         if (settingsWindow is null)
         {
-            settingsWindow = new SettingsWindow(config.Repositories, SaveRepositories);
+            settingsWindow = new SettingsWindow(
+                config.Repositories,
+                SaveRepositories,
+                repository => ghClient.CheckRepositoryAsync(config, repository, CancellationToken.None));
             settingsWindow.Closed += (_, _) => settingsWindow = null;
         }
         settingsWindow.Show();
