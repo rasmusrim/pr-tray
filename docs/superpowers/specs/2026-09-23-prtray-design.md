@@ -27,7 +27,7 @@ Solution `~/repos/PrTray`, .NET 10 (SDK 10.0.112), Avalonia 12.1.3 (tray-ikon ve
 `~/.config/PrTray/config.json` (`%APPDATA%\PrTray\` på Windows, `~/Library/Application Support/PrTray/` på macOS). Opprettes med standardverdier hvis den mangler:
 
 ```json
-{ "repositories": ["acme/widgets"], "pollIntervalSeconds": 120, "ghPath": "gh" }
+{ "repositories": [], "pollIntervalSeconds": 120, "ghPath": "gh" }
 ```
 
 Den eldre nøkkelen `watchedRepositories` leses fortsatt; lagring skriver `repositories`. Repo-listen redigeres i appen via menyvalget «Innstillinger…» (vindu med liste, «Fjern», tekstfelt for `eier/repo` eller GitHub-lenke + «Legg til», «Avbryt»/«Lagre»). Et repo sjekkes med `gh api repos/<eier>/<repo>` før det legges til. «Lagre» skriver config, oppdaterer polleren og henter på nytt med en gang.

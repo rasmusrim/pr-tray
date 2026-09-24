@@ -97,4 +97,10 @@ public sealed class ConfigStoreTests : IDisposable
     {
         Assert.Equal(expected, ConfigStore.IsValidRepositoryName(repository));
     }
+
+    [Fact]
+    public void Default_config_has_no_repository_filter()
+    {
+        Assert.Empty(PrTrayConfig.Default.Repositories);
+    }
 }

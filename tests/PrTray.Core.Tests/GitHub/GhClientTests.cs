@@ -8,8 +8,10 @@ public class GhClientTests
 {
     private static readonly FixedTimeProvider Clock = new(TestPullRequests.Now);
 
+    private static readonly PrTrayConfig ConfigWithRepository = PrTrayConfig.Default with { Repositories = ["acme/widgets"] };
+
     private static Task<GhResult> FetchWith(FakeProcessRunner runner, TimeSpan? timeout = null) =>
-        new GhClient(runner, Clock, timeout).FetchAsync(PrTrayConfig.Default, CancellationToken.None);
+        new GhClient(runner, Clock, timeout).FetchAsync(ConfigWithRepository, CancellationToken.None);
 
     [Fact]
     public async Task Success_parses_gh_output()

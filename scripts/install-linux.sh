@@ -26,7 +26,5 @@ EOF
 cp "$desktop_entry_path" "$autostart_entry_path"
 update-desktop-database "$(dirname "$desktop_entry_path")" 2>/dev/null || true
 
-systemctl --user disable --now gh-pr-review-notifier.service 2>/dev/null || true
-
 setsid -f "$install_directory/prtray" >/dev/null 2>&1
 echo "PrTray installert i $install_directory og startet. Config: ~/.config/PrTray/config.json"
