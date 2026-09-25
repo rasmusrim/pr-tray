@@ -15,6 +15,7 @@ public class NotificationTextsTests
     [InlineData(PrEventKind.Approved, "✅ colleague godkjente PR-en", false)]
     [InlineData(PrEventKind.ChangesRequested, "❌ colleague ba om endringer", true)]
     [InlineData(PrEventKind.ReviewRequested, "👀 Du er bedt om review", true)]
+    [InlineData(PrEventKind.ReadyForReview, "📣 colleague publiserte utkastet", false)]
     [InlineData(PrEventKind.Merged, "🟣 PR merget", false)]
     public void Message_per_event_kind(PrEventKind kind, string expectedTitle, bool expectedUrgent)
     {

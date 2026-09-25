@@ -5,6 +5,7 @@ Et lite tray-ikon som holder deg oppdatert på GitHub-PR-ene dine. PrTray bruker
 Du får skrivebordsvarsler, og et klikk på varselet åpner PR-en, når
 
 - en ny PR opprettes i et repo du overvåker
+- et utkast publiseres (markeres klart for review)
 - en PR får nye commits etter en review som ikke var en godkjenning
 - en PR blir godkjent
 - noen ber om endringer på PR-en din

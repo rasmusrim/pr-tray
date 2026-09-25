@@ -53,9 +53,10 @@ Den eldre nøkkelen `watchedRepositories` leses fortsatt; lagring skriver `repos
   | `Approved` | APPROVED-review av andre enn meg | `review:<reviewId>` |
   | `ChangesRequested` | Min PR, CHANGES_REQUESTED av andre | `review:<reviewId>` |
   | `ReviewRequested` | I `requested` | `requested:<prId>:<headOid>` |
+  | `ReadyForReview` | Watched/ReviewedByMe/ReviewRequested, forfatter ≠ meg, ikke utkast, og tidligere sett som utkast (`draft:<prId>` registreres stille mens PR-en er utkast) | `ready:<prId>` |
   | `Merged` | `State == MERGED` | `merged:<prId>` |
 
-  Hvis samme PR gir `ReviewRequested` sammen med `Opened` eller `NewCommitsSinceUnapprovedReview` i én runde, vises bare `ReviewRequested` (alle nøkler markeres sett). Hendelser med tidsstempel eldre enn 24 t (opprettet, review, merget) markeres sett uten varsel. `ReviewRequested` og `NewCommitsSinceUnapprovedReview` har ikke noe pålitelig tidsstempel (commit-dato ≠ push-tid) og varsles uansett alder. Når repo-listen endres, registreres PR-er som dukker opp for første gang stille, så et nytt repo ikke spiller av gamle hendelser.
+  Hvis samme PR gir `ReviewRequested` sammen med `Opened`, `NewCommitsSinceUnapprovedReview` eller `ReadyForReview` i én runde, vises bare `ReviewRequested` (alle nøkler markeres sett). Hendelser med tidsstempel eldre enn 24 t (opprettet, review, merget) markeres sett uten varsel. `ReviewRequested` og `NewCommitsSinceUnapprovedReview` har ikke noe pålitelig tidsstempel (commit-dato ≠ push-tid) og varsles uansett alder. `ReadyForReview` har heller ikke tidsstempel og varsles uansett alder. Når repo-listen endres, registreres PR-er som dukker opp for første gang stille, så et nytt repo ikke spiller av gamle hendelser.
 - `SeenStore` – JSON i `~/.local/state/PrTray/seen.json` (`XDG_STATE_HOME`-fallback), `%LOCALAPPDATA%\PrTray\` på Windows. Manglende/tom fil ⇒ første kjøring registrerer alle nøkler uten å varsle. Korrupt fil ⇒ behandles som første kjøring.
 - `Poller` – `PeriodicTimer` (fra config) + `RefreshNowAsync()`; eksponerer `SnapshotUpdated` og `EventsDetected`. Aldri to samtidige kall.
 

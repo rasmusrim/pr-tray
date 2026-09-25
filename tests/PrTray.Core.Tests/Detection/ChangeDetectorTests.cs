@@ -237,6 +237,67 @@ public class ChangeDetectorTests
     }
 
     [Fact]
+    public void Draft_is_recorded_without_reporting_ready_for_review()
+    {
+        var draft = Create(PrGroups.Watched) with { IsDraft = true };
+
+        var result = ChangeDetector.Detect(Snapshot(draft), Seen("opened:PR_1"), Now);
+
+        Assert.Empty(result.Events);
+        Assert.Contains("draft:PR_1", result.SeenKeys);
+    }
+
+    [Fact]
+    public void Ready_for_review_is_reported_when_a_draft_seen_earlier_is_published()
+    {
+        var result = ChangeDetector.Detect(Snapshot(Create(PrGroups.Watched)), Seen("opened:PR_1", "draft:PR_1"), Now);
+
+        var prEvent = Assert.Single(result.Events);
+        Assert.Equal(PrEventKind.ReadyForReview, prEvent.Kind);
+        Assert.Equal("colleague", prEvent.ActorLogin);
+        Assert.Contains("ready:PR_1", result.SeenKeys);
+    }
+
+    [Fact]
+    public void Ready_for_review_is_reported_long_after_the_draft_was_opened()
+    {
+        var pullRequest = Create(PrGroups.Watched) with { CreatedAt = Now.AddDays(-5) };
+
+        var events = ChangeDetector.Detect(Snapshot(pullRequest), Seen("opened:PR_1", "draft:PR_1"), Now).Events;
+
+        Assert.Equal(PrEventKind.ReadyForReview, Assert.Single(events).Kind);
+    }
+
+    [Fact]
+    public void Ready_for_review_is_not_reported_for_pr_never_seen_as_draft()
+    {
+        var events = ChangeDetector.Detect(Snapshot(Create(PrGroups.Watched)), Seen("opened:PR_1"), Now).Events;
+
+        Assert.Empty(events);
+    }
+
+    [Fact]
+    public void Ready_for_review_is_not_reported_for_my_own_pr()
+    {
+        var pullRequest = Create(PrGroups.Watched | PrGroups.Mine) with { AuthorLogin = Me };
+
+        var events = ChangeDetector.Detect(Snapshot(pullRequest), Seen("draft:PR_1"), Now).Events;
+
+        Assert.Empty(events);
+    }
+
+    [Fact]
+    public void Ready_for_review_is_suppressed_when_the_same_pr_also_requests_my_review()
+    {
+        var pullRequest = Create(PrGroups.Watched | PrGroups.ReviewRequested);
+
+        var result = ChangeDetector.Detect(Snapshot(pullRequest), Seen("opened:PR_1", "draft:PR_1"), Now);
+
+        Assert.Equal(PrEventKind.ReviewRequested, Assert.Single(result.Events).Kind);
+        Assert.Contains("ready:PR_1", result.SeenKeys);
+    }
+
+    [Fact]
     public void New_commits_pushed_long_after_they_were_committed_are_still_reported()
     {
         var pullRequest = Create(PrGroups.ReviewedByMe) with

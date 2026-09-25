@@ -29,6 +29,7 @@ public static class NotificationTexts
             PrEventKind.Approved => new($"✅ {prEvent.ActorLogin} godkjente PR-en", body, pullRequest.Url, IsUrgent: false),
             PrEventKind.ChangesRequested => new($"❌ {prEvent.ActorLogin} ba om endringer", body, pullRequest.Url, IsUrgent: true),
             PrEventKind.ReviewRequested => new("👀 Du er bedt om review", body, pullRequest.Url, IsUrgent: true),
+            PrEventKind.ReadyForReview => new($"📣 {prEvent.ActorLogin} publiserte utkastet", body, pullRequest.Url, IsUrgent: false),
             PrEventKind.Merged => new("🟣 PR merget", body, pullRequest.Url, IsUrgent: false),
             _ => throw new ArgumentOutOfRangeException(nameof(prEvent), prEvent.Kind, null),
         };
