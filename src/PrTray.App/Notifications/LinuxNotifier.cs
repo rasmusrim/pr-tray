@@ -17,7 +17,7 @@ public sealed class LinuxNotifier : INotifier
 
     public LinuxNotifier() => actionSubscription = new Lazy<Task<IDisposable>>(SubscribeToActionsAsync);
 
-    public void Show(NotificationMessage message) => _ = ShowAsync(message);
+    public void Show(NotificationMessage message, NotificationSoundSelection sound) => _ = ShowAsync(message, sound);
 
     public void Dispose()
     {
@@ -25,13 +25,13 @@ public sealed class LinuxNotifier : INotifier
             actionSubscription.Value.Result.Dispose();
     }
 
-    private async Task ShowAsync(NotificationMessage message)
+    private async Task ShowAsync(NotificationMessage message, NotificationSoundSelection sound)
     {
         try
         {
             await actionSubscription.Value;
             var notificationId = await DBusConnection.Session.CallMethodAsync(
-                CreateNotifyMessage(message),
+                CreateNotifyMessage(message, sound),
                 (Message reply, object? _) => reply.GetBodyReader().ReadUInt32(),
                 null);
             pendingNotifications.Add(notificationId, message.Url);
@@ -65,7 +65,7 @@ public sealed class LinuxNotifier : INotifier
             false,
             null);
 
-    private static MessageBuffer CreateNotifyMessage(NotificationMessage message)
+    private static MessageBuffer CreateNotifyMessage(NotificationMessage message, NotificationSoundSelection sound)
     {
         using var writer = DBusConnection.Session.GetMessageWriter();
         writer.WriteMethodCallHeader(
@@ -80,11 +80,38 @@ public sealed class LinuxNotifier : INotifier
         writer.WriteString(message.Title);
         writer.WriteString(NotificationMarkup.Escape(message.Body));
         writer.WriteArray(Actions);
-        writer.WriteDictionary(new Dictionary<string, VariantValue>
-        {
-            ["urgency"] = VariantValue.Byte(message.IsUrgent ? CriticalUrgency : NormalUrgency),
-        });
+        writer.WriteDictionary(Hints(message, sound));
         writer.WriteInt32(-1);
         return writer.CreateMessage();
     }
+
+    private static Dictionary<string, VariantValue> Hints(NotificationMessage message, NotificationSoundSelection sound)
+    {
+        var hints = new Dictionary<string, VariantValue>
+        {
+            ["urgency"] = VariantValue.Byte(message.IsUrgent ? CriticalUrgency : NormalUrgency),
+        };
+        switch (sound.EffectiveSound)
+        {
+            case NotificationSound.None:
+                hints["suppress-sound"] = VariantValue.Bool(true);
+                break;
+            case NotificationSound.Custom:
+                hints["sound-file"] = VariantValue.String(sound.CustomSoundFile!);
+                break;
+            default:
+                hints["sound-name"] = VariantValue.String(ThemeSoundName(sound.EffectiveSound));
+                break;
+        }
+        return hints;
+    }
+
+    private static string ThemeSoundName(NotificationSound sound) => sound switch
+    {
+        NotificationSound.Email => "message-new-email",
+        NotificationSound.Complete => "complete",
+        NotificationSound.Bell => "bell",
+        NotificationSound.Reminder => "alarm-clock-elapsed",
+        _ => "message-new-instant",
+    };
 }

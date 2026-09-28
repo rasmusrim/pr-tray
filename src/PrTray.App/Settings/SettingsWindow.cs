@@ -6,6 +6,7 @@ using Avalonia.Media;
 using PrTray.App.Styling;
 using PrTray.Core.GitHub;
 using PrTray.Core.Presentation;
+using PrTray.Core.Storage;
 
 namespace PrTray.App.Settings;
 
@@ -13,24 +14,29 @@ public sealed class SettingsWindow : Window
 {
     private static readonly IBrush ErrorBrush = new SolidColorBrush(Color.Parse("#DA3633"));
 
+    private readonly PrTrayConfig currentConfig;
     private readonly List<string> repositories;
-    private readonly Action<IReadOnlyList<string>> saveRepositories;
+    private readonly Action<PrTrayConfig> saveConfig;
     private readonly Func<string, Task<RepositoryCheck>> checkRepository;
     private readonly StackPanel repositoryRows = new() { Spacing = 4 };
     private readonly TextBox newRepositoryInput = new() { PlaceholderText = "eier/repo eller GitHub-lenke" };
     private readonly TextBlock validationMessage = new() { IsVisible = false, TextWrapping = TextWrapping.Wrap };
+    private readonly NotificationSoundPicker soundPicker;
 
     public SettingsWindow(
-        IReadOnlyList<string> currentRepositories,
-        Action<IReadOnlyList<string>> saveRepositories,
-        Func<string, Task<RepositoryCheck>> checkRepository)
+        PrTrayConfig currentConfig,
+        Action<PrTrayConfig> saveConfig,
+        Func<string, Task<RepositoryCheck>> checkRepository,
+        Action<NotificationSoundSelection> previewSound)
     {
-        repositories = currentRepositories.ToList();
-        this.saveRepositories = saveRepositories;
+        this.currentConfig = currentConfig;
+        repositories = currentConfig.Repositories.ToList();
+        soundPicker = new NotificationSoundPicker(new(currentConfig.NotificationSound, currentConfig.CustomSoundFile), previewSound);
+        this.saveConfig = saveConfig;
         this.checkRepository = checkRepository;
         Title = "PrTray – innstillinger";
         Width = 540;
-        Height = 520;
+        Height = 600;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         newRepositoryInput.KeyDown += (_, keyArguments) =>
         {
@@ -38,14 +44,18 @@ public sealed class SettingsWindow : Window
                 AddRepository();
         };
 
-        var buttons = SettingsLayout.ButtonRow(("Avbryt", false, Close), ("Lagre", true, SaveAndClose));
-        DockPanel.SetDock(buttons, Dock.Bottom);
+        var footer = new StackPanel
+        {
+            Spacing = 12,
+            Children = { soundPicker, SettingsLayout.ButtonRow(("Avbryt", false, Close), ("Lagre", true, SaveAndClose)) },
+        };
+        DockPanel.SetDock(footer, Dock.Bottom);
         var header = SettingsLayout.Header(newRepositoryInput, AddRepository, validationMessage);
         DockPanel.SetDock(header, Dock.Top);
         Content = new DockPanel
         {
             Margin = new Thickness(20),
-            Children = { buttons, header, new ScrollViewer { Content = repositoryRows, Margin = new Thickness(0, 12) } },
+            Children = { footer, header, new ScrollViewer { Content = repositoryRows, Margin = new Thickness(0, 12) } },
         };
         RenderRepositories();
     }
@@ -94,7 +104,12 @@ public sealed class SettingsWindow : Window
 
     private void SaveAndClose()
     {
-        saveRepositories(repositories.ToList());
+        saveConfig(currentConfig with
+        {
+            Repositories = repositories.ToList(),
+            NotificationSound = soundPicker.Selection.Sound,
+            CustomSoundFile = soundPicker.Selection.CustomSoundFile,
+        });
         Close();
     }
 

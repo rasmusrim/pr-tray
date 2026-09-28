@@ -47,6 +47,13 @@ public class NotificationTextsTests
     }
 
     [Fact]
+    public void Sound_preview_is_not_urgent()
+    {
+        Assert.Equal("🔔 Slik høres varslene fra PrTray ut", NotificationTexts.SoundPreview.Title);
+        Assert.False(NotificationTexts.SoundPreview.IsUrgent);
+    }
+
+    [Fact]
     public void Markup_escape_handles_ampersand_and_angle_brackets()
     {
         Assert.Equal("Ny SMS-flyt &amp; &lt;varsler&gt;", NotificationMarkup.Escape("Ny SMS-flyt & <varsler>"));

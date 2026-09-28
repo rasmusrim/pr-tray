@@ -45,6 +45,8 @@ public sealed class TrayApp : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    private NotificationSoundSelection ConfiguredSound => new(config.NotificationSound, config.CustomSoundFile);
+
     private PrSections? CurrentSections => lastSnapshot is null ? null : PrSections.From(lastSnapshot);
 
     private TrayMenuActions MenuActions => new(UrlOpener.Open, ShowOverview, ShowSettings, () => _ = poller?.RefreshNowAsync(), Quit);
@@ -54,8 +56,9 @@ public sealed class TrayApp : Application
         latestResult = outcome.Result;
         if (outcome.Result is GhResult.Success success)
             lastSnapshot = success.Snapshot;
-        foreach (var message in NotificationTexts.ForBatch(outcome.Events))
-            notifier.Show(message);
+        var messages = NotificationTexts.ForBatch(outcome.Events);
+        for (var index = 0; index < messages.Count; index++)
+            notifier.Show(messages[index], index == 0 ? ConfiguredSound : NotificationSoundSelection.Silent);
         Refresh();
     }
 
@@ -82,18 +85,19 @@ public sealed class TrayApp : Application
         if (settingsWindow is null)
         {
             settingsWindow = new SettingsWindow(
-                config.Repositories,
-                SaveRepositories,
-                repository => ghClient.CheckRepositoryAsync(config, repository, CancellationToken.None));
+                config,
+                SaveConfig,
+                repository => ghClient.CheckRepositoryAsync(config, repository, CancellationToken.None),
+                sound => notifier.Show(NotificationTexts.SoundPreview, sound));
             settingsWindow.Closed += (_, _) => settingsWindow = null;
         }
         settingsWindow.Show();
         settingsWindow.Activate();
     }
 
-    private void SaveRepositories(IReadOnlyList<string> repositories)
+    private void SaveConfig(PrTrayConfig updatedConfig)
     {
-        config = config with { Repositories = repositories };
+        config = updatedConfig;
         configStore.Save(config);
         poller?.UpdateConfig(config);
         _ = poller?.RefreshNowAsync();

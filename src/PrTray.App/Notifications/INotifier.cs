@@ -4,5 +4,5 @@ namespace PrTray.App.Notifications;
 
 public interface INotifier : IDisposable
 {
-    void Show(NotificationMessage message);
+    void Show(NotificationMessage message, NotificationSoundSelection sound);
 }

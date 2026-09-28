@@ -8,6 +8,9 @@ public static class NotificationTexts
 
     private const string PullRequestsOverviewUrl = "https://github.com/pulls";
 
+    public static NotificationMessage SoundPreview { get; } =
+        new("🔔 Slik høres varslene fra PrTray ut", "Lagre innstillingene for å bruke denne lyden.", PullRequestsOverviewUrl, IsUrgent: false);
+
     public static IReadOnlyList<NotificationMessage> ForBatch(IReadOnlyList<PrEvent> events)
     {
         if (events.Count <= MaxIndividualNotifications)

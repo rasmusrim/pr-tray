@@ -1,3 +1,4 @@
+using PrTray.Core.Presentation;
 using PrTray.Core.Storage;
 
 namespace PrTray.Core.Tests.Storage;
@@ -25,17 +26,20 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(PrTrayConfig.Default.Repositories, config.Repositories);
         Assert.Equal(120, config.PollIntervalSeconds);
         Assert.Equal("gh", config.GhPath);
+        Assert.Equal(NotificationSound.Message, config.NotificationSound);
+        Assert.Null(config.CustomSoundFile);
         Assert.Contains("\"repositories\"", File.ReadAllText(ConfigPath));
     }
 
     [Fact]
     public void Stored_values_are_loaded()
     {
-        var config = LoadFrom("""{ "repositories": ["rasmusrim/ku"], "pollIntervalSeconds": 300, "ghPath": "/opt/homebrew/bin/gh" }""");
+        var config = LoadFrom("""{ "repositories": ["rasmusrim/ku"], "pollIntervalSeconds": 300, "ghPath": "/opt/homebrew/bin/gh", "notificationSound": "bell" }""");
 
         Assert.Equal(new[] { "rasmusrim/ku" }, config.Repositories);
         Assert.Equal(300, config.PollIntervalSeconds);
         Assert.Equal("/opt/homebrew/bin/gh", config.GhPath);
+        Assert.Equal(NotificationSound.Bell, config.NotificationSound);
     }
 
     [Fact]
@@ -54,6 +58,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(ConfigStore.MinimumPollIntervalSeconds, config.PollIntervalSeconds);
         Assert.Empty(config.Repositories);
         Assert.Equal("gh", config.GhPath);
+        Assert.Equal(NotificationSound.Message, config.NotificationSound);
     }
 
     [Fact]
@@ -77,13 +82,31 @@ public sealed class ConfigStoreTests : IDisposable
     public void Saved_config_round_trips_under_the_new_key()
     {
         var store = new ConfigStore(ConfigPath);
-        var config = new PrTrayConfig(["rasmusrim/ku", "acme/widgets"], 300, "gh");
+        var config = new PrTrayConfig(["rasmusrim/ku", "acme/widgets"], 300, "gh", NotificationSound.Custom, "/home/me/pling.wav");
 
         store.Save(config);
 
         Assert.Equal(config.Repositories, store.LoadOrCreate().Repositories);
         Assert.Equal(300, store.LoadOrCreate().PollIntervalSeconds);
+        Assert.Equal(NotificationSound.Custom, store.LoadOrCreate().NotificationSound);
+        Assert.Equal("/home/me/pling.wav", store.LoadOrCreate().CustomSoundFile);
+        Assert.Contains("\"notificationSound\": \"custom\"", File.ReadAllText(ConfigPath));
         Assert.DoesNotContain("watchedRepositories", File.ReadAllText(ConfigPath));
+    }
+
+    [Theory]
+    [InlineData("""{ "notificationSound": "trumpet" }""")]
+    [InlineData("""{ "notificationSound": "custom" }""")]
+    [InlineData("""{ "notificationSound": "custom", "customSoundFile": "  " }""")]
+    public void Unknown_sound_or_custom_sound_without_file_falls_back_to_default(string json)
+    {
+        Assert.Equal(PrTrayConfig.Default.NotificationSound, LoadFrom(json).NotificationSound);
+    }
+
+    [Fact]
+    public void Sound_can_be_turned_off()
+    {
+        Assert.Equal(NotificationSound.None, LoadFrom("""{ "notificationSound": "none" }""").NotificationSound);
     }
 
     [Theory]

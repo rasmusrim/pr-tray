@@ -88,7 +88,9 @@ Innstillingene lagres i `~/.config/PrTray/config.json`:
 {
   "repositories": ["eier/repo"],
   "pollIntervalSeconds": 120,
-  "ghPath": "gh"
+  "ghPath": "gh",
+  "notificationSound": "message",
+  "customSoundFile": null
 }
 ```
 
@@ -97,6 +99,10 @@ Innstillingene lagres i `~/.config/PrTray/config.json`:
 | `repositories` | Repoene som filtreres på og overvåkes |
 | `pollIntervalSeconds` | Hvor ofte GitHub sjekkes (minst 30 sekunder) |
 | `ghPath` | Stien til `gh`, hvis den ikke ligger i `PATH` |
+| `notificationSound` | Lyden ved varsler: `none`, `message`, `email`, `complete`, `bell`, `reminder` eller `custom` |
+| `customSoundFile` | Stien til egen lydfil når `notificationSound` er `custom` (WAV på Windows) |
+
+Lyden kan også velges i innstillingsvinduet, der «Spill av» viser et testvarsel med valgt lyd. Kommer flere varsler samtidig, spilles lyden bare én gang.
 
 Hvilke hendelser du allerede er varslet om, lagres i `~/.local/state/PrTray/seen.json`. Første gang appen kjører, registreres alt som finnes uten varsler. Nye PR-er, reviews og merger som er eldre enn et døgn, varsles ikke.
 
