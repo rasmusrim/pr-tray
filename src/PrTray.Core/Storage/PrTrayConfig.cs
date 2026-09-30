@@ -4,7 +4,8 @@ namespace PrTray.Core.Storage;
 
 public sealed record PrTrayConfig(IReadOnlyList<string> Repositories, int PollIntervalSeconds, string GhPath,
     NotificationSound NotificationSound,
-    string? CustomSoundFile)
+    string? CustomSoundFile,
+    TextSize TextSize)
 {
-    public static PrTrayConfig Default { get; } = new([], 120, "gh", NotificationSound.Message, CustomSoundFile: null);
+    public static PrTrayConfig Default { get; } = new([], 120, "gh", NotificationSound.Message, CustomSoundFile: null, TextSize.Normal);
 }

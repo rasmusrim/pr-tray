@@ -47,8 +47,8 @@ public sealed class PullRequestRow : Button
             Margin = new Thickness(12, 0),
             Children =
             {
-                new TextBlock { Text = pullRequest.Title, FontSize = 14, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis },
-                new TextBlock { Text = $"{pullRequest.DisplayName} · {pullRequest.AuthorLogin} · {age}", FontSize = 12, Opacity = 0.65, TextTrimming = TextTrimming.CharacterEllipsis },
+                new TextBlock { Text = pullRequest.Title, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis },
+                new TextBlock { Text = $"{pullRequest.DisplayName} · {pullRequest.AuthorLogin} · {age}", Classes = { TextStyles.Caption }, Opacity = 0.65, TextTrimming = TextTrimming.CharacterEllipsis },
             },
         };
         Grid.SetColumn(texts, 1);
@@ -66,7 +66,7 @@ public sealed class PullRequestRow : Button
             Child = new TextBlock
             {
                 Text = PrLabels.StatusText(pullRequest),
-                FontSize = 12,
+                Classes = { TextStyles.Caption },
                 FontWeight = FontWeight.SemiBold,
                 Foreground = new SolidColorBrush(statusColor),
             },
