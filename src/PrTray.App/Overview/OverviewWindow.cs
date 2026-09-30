@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using PrTray.App.Styling;
 using PrTray.Core.Presentation;
 
 namespace PrTray.App.Overview;
@@ -8,7 +9,7 @@ namespace PrTray.App.Overview;
 public sealed class OverviewWindow : Window
 {
     private readonly StackPanel sectionCards = new();
-    private readonly TextBlock lastUpdated = new() { FontSize = 12, Opacity = 0.65 };
+    private readonly TextBlock lastUpdated = new() { Classes = { TextStyles.Caption }, Opacity = 0.65 };
     private readonly Action<string> openUrl;
 
     public OverviewWindow(Action<string> openUrl)
@@ -23,7 +24,7 @@ public sealed class OverviewWindow : Window
         {
             Spacing = 2,
             Margin = new Thickness(0, 0, 0, 16),
-            Children = { new TextBlock { Text = "Pull requests", FontSize = 22, FontWeight = FontWeight.SemiBold }, lastUpdated },
+            Children = { new TextBlock { Text = "Pull requests", Classes = { TextStyles.Title }, FontWeight = FontWeight.SemiBold }, lastUpdated },
         };
         DockPanel.SetDock(header, Dock.Top);
         Content = new DockPanel

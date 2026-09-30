@@ -55,7 +55,10 @@ public sealed partial class ConfigStore(string filePath)
         PollIntervalSeconds: Math.Max(stored.PollIntervalSeconds ?? PrTrayConfig.Default.PollIntervalSeconds, MinimumPollIntervalSeconds),
         GhPath: string.IsNullOrWhiteSpace(stored.GhPath) ? PrTrayConfig.Default.GhPath : stored.GhPath,
         NotificationSound: SanitizeSound(stored),
-        CustomSoundFile: string.IsNullOrWhiteSpace(stored.CustomSoundFile) ? null : stored.CustomSoundFile);
+        CustomSoundFile: string.IsNullOrWhiteSpace(stored.CustomSoundFile) ? null : stored.CustomSoundFile,
+        TextSize: Enum.TryParse<TextSize>(stored.TextSize, ignoreCase: true, out var textSize) && Enum.IsDefined(textSize)
+            ? textSize
+            : PrTrayConfig.Default.TextSize);
 
     private static NotificationSound SanitizeSound(StoredConfig stored)
     {
@@ -75,5 +78,6 @@ public sealed partial class ConfigStore(string filePath)
         int? PollIntervalSeconds,
         string? GhPath,
         string? NotificationSound,
-        string? CustomSoundFile);
+        string? CustomSoundFile,
+        string? TextSize);
 }

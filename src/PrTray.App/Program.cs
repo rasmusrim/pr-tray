@@ -9,4 +9,6 @@ if (!isFirstInstance)
 
 AppBuilder.Configure<TrayApp>()
     .UsePlatformDetect()
+    // Separate popup windows lose clicks outside the parent window under XWayland; drawn in-window, dropdowns fit the window instead.
+    .With(new X11PlatformOptions { OverlayPopups = true })
     .StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);

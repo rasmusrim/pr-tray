@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using PrTray.App.Styling;
 
 namespace PrTray.App.Settings;
 
@@ -17,7 +18,7 @@ public static class SettingsLayout
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "Overvåkede repoer", FontSize = 22, FontWeight = FontWeight.SemiBold },
+                new TextBlock { Text = "Overvåkede repoer", Classes = { TextStyles.Title }, FontWeight = FontWeight.SemiBold },
                 new TextBlock
                 {
                     Text = "Bare PR-er i disse repoene vises og varsles. Du får også varsel om nye PR-er, godkjenninger og merger i dem.",
@@ -35,6 +36,12 @@ public static class SettingsLayout
             },
         };
     }
+
+    public static StackPanel Labeled(string label, Control input) => new()
+    {
+        Spacing = 6,
+        Children = { new TextBlock { Text = label }, input },
+    };
 
     public static StackPanel ButtonRow(params (string Label, bool IsPrimary, Action OnClick)[] buttons)
     {

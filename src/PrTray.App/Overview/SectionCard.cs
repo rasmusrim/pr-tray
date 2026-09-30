@@ -34,14 +34,14 @@ public sealed class SectionCard : Border
         Margin = new Thickness(12, 4, 12, 6),
         Children =
         {
-            new TextBlock { Text = heading, FontSize = 15, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },
+            new TextBlock { Text = heading, Classes = { TextStyles.Heading }, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },
             new Border
             {
                 Background = StatusColors.CardBackground,
                 CornerRadius = new CornerRadius(9),
                 Padding = new Thickness(7, 1),
                 VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = count.ToString(), FontSize = 12, Opacity = 0.8 },
+                Child = new TextBlock { Text = count.ToString(), Classes = { TextStyles.Caption }, Opacity = 0.8 },
             },
         },
     };

@@ -28,6 +28,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal("gh", config.GhPath);
         Assert.Equal(NotificationSound.Message, config.NotificationSound);
         Assert.Null(config.CustomSoundFile);
+        Assert.Equal(TextSize.Normal, config.TextSize);
         Assert.Contains("\"repositories\"", File.ReadAllText(ConfigPath));
     }
 
@@ -82,7 +83,7 @@ public sealed class ConfigStoreTests : IDisposable
     public void Saved_config_round_trips_under_the_new_key()
     {
         var store = new ConfigStore(ConfigPath);
-        var config = new PrTrayConfig(["rasmusrim/ku", "acme/widgets"], 300, "gh", NotificationSound.Custom, "/home/me/pling.wav");
+        var config = new PrTrayConfig(["rasmusrim/ku", "acme/widgets"], 300, "gh", NotificationSound.Custom, "/home/me/pling.wav", TextSize.Larger);
 
         store.Save(config);
 
@@ -90,6 +91,8 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(300, store.LoadOrCreate().PollIntervalSeconds);
         Assert.Equal(NotificationSound.Custom, store.LoadOrCreate().NotificationSound);
         Assert.Equal("/home/me/pling.wav", store.LoadOrCreate().CustomSoundFile);
+        Assert.Equal(TextSize.Larger, store.LoadOrCreate().TextSize);
+        Assert.Contains("\"textSize\": \"larger\"", File.ReadAllText(ConfigPath));
         Assert.Contains("\"notificationSound\": \"custom\"", File.ReadAllText(ConfigPath));
         Assert.DoesNotContain("watchedRepositories", File.ReadAllText(ConfigPath));
     }
@@ -107,6 +110,17 @@ public sealed class ConfigStoreTests : IDisposable
     public void Sound_can_be_turned_off()
     {
         Assert.Equal(NotificationSound.None, LoadFrom("""{ "notificationSound": "none" }""").NotificationSound);
+    }
+
+    [Theory]
+    [InlineData("""{ "textSize": "large" }""", TextSize.Large)]
+    [InlineData("""{ "textSize": "LARGEST" }""", TextSize.Largest)]
+    [InlineData("""{ "textSize": "huge" }""", TextSize.Normal)]
+    [InlineData("""{ "textSize": "7" }""", TextSize.Normal)]
+    [InlineData("""{ }""", TextSize.Normal)]
+    public void Text_size_is_loaded_and_unknown_values_fall_back_to_normal(string json, TextSize expected)
+    {
+        Assert.Equal(expected, LoadFrom(json).TextSize);
     }
 
     [Theory]

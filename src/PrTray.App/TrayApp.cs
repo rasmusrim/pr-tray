@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using PrTray.App.Notifications;
 using PrTray.App.Overview;
 using PrTray.App.Settings;
+using PrTray.App.Styling;
 using PrTray.Core.GitHub;
 using PrTray.Core.Models;
 using PrTray.Core.Polling;
@@ -17,6 +18,7 @@ namespace PrTray.App;
 public sealed class TrayApp : Application
 {
     private readonly NativeMenu menu = new();
+    private readonly TextStyles textStyles = new();
     private readonly INotifier notifier = NotifierFactory.Create();
     private readonly ConfigStore configStore = new(AppPaths.ConfigFile);
     private PrTrayConfig config = PrTrayConfig.Default;
@@ -28,11 +30,16 @@ public sealed class TrayApp : Application
     private PrSnapshot? lastSnapshot;
     private GhResult? latestResult;
 
-    public override void Initialize() => Styles.Add(new FluentTheme());
+    public override void Initialize()
+    {
+        Styles.Add(new FluentTheme());
+        Styles.Add(textStyles);
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
         config = configStore.LoadOrCreate();
+        textStyles.Apply(Resources, config.TextSize);
         poller = new Poller(ghClient, new SeenStore(AppPaths.SeenFile), config, TimeProvider.System);
         poller.Polled += outcome => Dispatcher.UIThread.Post(() => OnPolled(outcome));
 
@@ -99,6 +106,7 @@ public sealed class TrayApp : Application
     {
         config = updatedConfig;
         configStore.Save(config);
+        textStyles.Apply(Resources, config.TextSize);
         poller?.UpdateConfig(config);
         _ = poller?.RefreshNowAsync();
     }

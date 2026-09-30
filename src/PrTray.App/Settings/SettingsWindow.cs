@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -22,6 +23,12 @@ public sealed class SettingsWindow : Window
     private readonly TextBox newRepositoryInput = new() { PlaceholderText = "eier/repo eller GitHub-lenke" };
     private readonly TextBlock validationMessage = new() { IsVisible = false, TextWrapping = TextWrapping.Wrap };
     private readonly NotificationSoundPicker soundPicker;
+    private readonly ComboBox textSizeInput = new()
+    {
+        ItemsSource = Enum.GetValues<TextSize>(),
+        ItemTemplate = new FuncDataTemplate<TextSize>((size, _) => new TextBlock { Text = TextSizes.Label(size) }),
+        MinWidth = 180,
+    };
 
     public SettingsWindow(
         PrTrayConfig currentConfig,
@@ -32,6 +39,7 @@ public sealed class SettingsWindow : Window
         this.currentConfig = currentConfig;
         repositories = currentConfig.Repositories.ToList();
         soundPicker = new NotificationSoundPicker(new(currentConfig.NotificationSound, currentConfig.CustomSoundFile), previewSound);
+        textSizeInput.SelectedItem = currentConfig.TextSize;
         this.saveConfig = saveConfig;
         this.checkRepository = checkRepository;
         Title = "PrTray – innstillinger";
@@ -47,7 +55,7 @@ public sealed class SettingsWindow : Window
         var footer = new StackPanel
         {
             Spacing = 12,
-            Children = { soundPicker, SettingsLayout.ButtonRow(("Avbryt", false, Close), ("Lagre", true, SaveAndClose)) },
+            Children = { soundPicker, SettingsLayout.Labeled("Tekststørrelse", textSizeInput), SettingsLayout.ButtonRow(("Avbryt", false, Close), ("Lagre", true, SaveAndClose)) },
         };
         DockPanel.SetDock(footer, Dock.Bottom);
         var header = SettingsLayout.Header(newRepositoryInput, AddRepository, validationMessage);
@@ -109,6 +117,7 @@ public sealed class SettingsWindow : Window
             Repositories = repositories.ToList(),
             NotificationSound = soundPicker.Selection.Sound,
             CustomSoundFile = soundPicker.Selection.CustomSoundFile,
+            TextSize = textSizeInput.SelectedItem as TextSize? ?? currentConfig.TextSize,
         });
         Close();
     }
@@ -140,7 +149,7 @@ public sealed class SettingsWindow : Window
             Child = new Grid
             {
                 ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-                Children = { new TextBlock { Text = repository, FontSize = 14, VerticalAlignment = VerticalAlignment.Center }, removeButton },
+                Children = { new TextBlock { Text = repository, VerticalAlignment = VerticalAlignment.Center }, removeButton },
             },
         };
     }
