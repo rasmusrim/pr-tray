@@ -23,12 +23,19 @@ public static class GhResponseParser
                     continue;
                 var pullRequest = ParsePullRequest(node, aliasGroup.Value);
                 pullRequestsById[pullRequest.Id] = pullRequestsById.TryGetValue(pullRequest.Id, out var existing)
-                    ? existing with { Groups = existing.Groups | pullRequest.Groups }
+                    ? Merge(existing, pullRequest)
                     : pullRequest;
             }
         }
         return new PrSnapshot(viewerLogin, pullRequestsById.Values.ToList(), fetchedAt);
     }
+
+    // Only some searches fetch comments, so keep them from whichever search returned the PR with them.
+    private static PullRequest Merge(PullRequest existing, PullRequest duplicate) => existing with
+    {
+        Groups = existing.Groups | duplicate.Groups,
+        Comments = existing.Comments.Count > 0 ? existing.Comments : duplicate.Comments,
+    };
 
     private static PullRequest ParsePullRequest(JsonElement node, PrGroups group)
     {
@@ -51,6 +58,9 @@ public static class GhResponseParser
             HeadCommitOid: hasHeadCommit ? OptionalString(headCommit, "oid") : null,
             HeadCommittedAt: hasHeadCommit ? OptionalDate(headCommit, "committedDate") : null,
             Reviews: node.GetProperty("reviews").GetProperty("nodes").EnumerateArray().Select(ParseReview).ToList(),
+            Comments: node.TryGetProperty("comments", out var comments) && comments.ValueKind == JsonValueKind.Object
+                ? comments.GetProperty("nodes").EnumerateArray().Select(ParseComment).ToList()
+                : [],
             Groups: group);
     }
 
@@ -58,12 +68,25 @@ public static class GhResponseParser
         Id: node.GetProperty("id").GetString()!,
         State: ParseReviewState(OptionalString(node, "state")),
         AuthorLogin: LoginOf(node),
-        AuthorIsBot: node.TryGetProperty("author", out var author) && author.ValueKind == JsonValueKind.Object
-            && OptionalString(author, "__typename") == "Bot",
+        AuthorIsBot: IsBotAuthor(node),
         SubmittedAt: OptionalDate(node, "submittedAt"),
         CommitOid: node.TryGetProperty("commit", out var commit) && commit.ValueKind == JsonValueKind.Object
             ? OptionalString(commit, "oid")
-            : null);
+            : null,
+        Url: node.GetProperty("url").GetString()!,
+        BodyText: OptionalString(node, "bodyText") ?? "");
+
+    private static Comment ParseComment(JsonElement node) => new(
+        Id: node.GetProperty("id").GetString()!,
+        AuthorLogin: LoginOf(node),
+        AuthorIsBot: IsBotAuthor(node),
+        CreatedAt: OptionalDate(node, "createdAt"),
+        Url: node.GetProperty("url").GetString()!,
+        BodyText: OptionalString(node, "bodyText") ?? "");
+
+    private static bool IsBotAuthor(JsonElement node) =>
+        node.TryGetProperty("author", out var author) && author.ValueKind == JsonValueKind.Object
+            && OptionalString(author, "__typename") == "Bot";
 
     private static string LoginOf(JsonElement node) =>
         node.TryGetProperty("author", out var author) && author.ValueKind == JsonValueKind.Object

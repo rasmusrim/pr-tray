@@ -104,7 +104,21 @@ public class ChangeDetectorTests
     }
 
     [Fact]
-    public void Commented_reviews_are_ignored()
+    public void Comment_by_colleague_on_my_pr_is_reported()
+    {
+        var pullRequest = Create(PrGroups.Mine) with { AuthorLogin = Me, Comments = [CommentBy("colleague")] };
+
+        var result = ChangeDetector.Detect(Snapshot(pullRequest), NothingSeen, Now);
+
+        var prEvent = Assert.Single(result.Events);
+        Assert.Equal(PrEventKind.Commented, prEvent.Kind);
+        Assert.Equal("colleague", prEvent.ActorLogin);
+        Assert.Equal("C_1", Assert.Single(prEvent.Comments).Id);
+        Assert.Contains("comment:C_1", result.SeenKeys);
+    }
+
+    [Fact]
+    public void Comment_review_by_colleague_on_my_pr_is_reported()
     {
         var pullRequest = Create(PrGroups.Mine) with
         {
@@ -112,7 +126,114 @@ public class ChangeDetectorTests
             Reviews = [ReviewBy("colleague", ReviewState.Commented)],
         };
 
+        var result = ChangeDetector.Detect(Snapshot(pullRequest), NothingSeen, Now);
+
+        var prEvent = Assert.Single(result.Events);
+        Assert.Equal(PrEventKind.Commented, prEvent.Kind);
+        Assert.Equal("R_1", Assert.Single(prEvent.Comments).Id);
+        Assert.Contains("review:R_1", result.SeenKeys);
+    }
+
+    [Fact]
+    public void My_own_comments_are_not_reported()
+    {
+        var pullRequest = Create(PrGroups.Mine) with
+        {
+            AuthorLogin = Me,
+            Reviews = [ReviewBy(Me, ReviewState.Commented)],
+            Comments = [CommentBy(Me)],
+        };
+
         Assert.Empty(EventsFor(pullRequest));
+    }
+
+    [Fact]
+    public void Bot_comments_are_not_reported()
+    {
+        var pullRequest = Create(PrGroups.Mine) with
+        {
+            AuthorLogin = Me,
+            Reviews = [ReviewBy("copilot-pull-request-reviewer", ReviewState.Commented) with { AuthorIsBot = true }],
+            Comments = [CommentBy("github-actions") with { AuthorIsBot = true }],
+        };
+
+        Assert.Empty(EventsFor(pullRequest));
+    }
+
+    [Fact]
+    public void Comments_on_pr_that_is_not_mine_are_not_reported()
+    {
+        var pullRequest = Create(PrGroups.Watched | PrGroups.ReviewedByMe) with
+        {
+            Reviews = [ReviewBy("reviewer", ReviewState.Commented)],
+            Comments = [CommentBy("reviewer")],
+        };
+
+        var events = ChangeDetector.Detect(Snapshot(pullRequest), Seen("opened:PR_1"), Now).Events;
+
+        Assert.Empty(events);
+    }
+
+    [Fact]
+    public void New_comments_on_the_same_pr_are_combined_into_one_event_in_time_order()
+    {
+        var pullRequest = Create(PrGroups.Mine) with
+        {
+            AuthorLogin = Me,
+            Reviews =
+            [
+                ReviewBy("reviewer", ReviewState.Commented, id: "R_1") with { SubmittedAt = Now.AddMinutes(-20) },
+                ReviewBy("reviewer", ReviewState.Commented, id: "R_2") with { SubmittedAt = Now.AddMinutes(-2) },
+            ],
+            Comments = [CommentBy("colleague", id: "C_1") with { CreatedAt = Now.AddMinutes(-10) }],
+        };
+
+        var prEvent = Assert.Single(EventsFor(pullRequest));
+
+        Assert.Equal(PrEventKind.Commented, prEvent.Kind);
+        Assert.Equal(new[] { "R_1", "C_1", "R_2" }, prEvent.Comments.Select(comment => comment.Id));
+        Assert.Equal("reviewer", prEvent.ActorLogin);
+    }
+
+    [Fact]
+    public void Comments_on_different_prs_are_reported_separately()
+    {
+        var first = Create(PrGroups.Mine) with { AuthorLogin = Me, Comments = [CommentBy("colleague", id: "C_1")] };
+        var second = first with { Id = "PR_2", Number = 71, Comments = [CommentBy("colleague", id: "C_2")] };
+
+        var events = EventsFor(first, second);
+
+        Assert.Equal(new[] { "PR_1", "PR_2" }, events.Select(prEvent => prEvent.PullRequest.Id));
+        Assert.All(events, prEvent => Assert.Equal(PrEventKind.Commented, prEvent.Kind));
+    }
+
+    [Fact]
+    public void Already_seen_comments_are_left_out()
+    {
+        var pullRequest = Create(PrGroups.Mine) with
+        {
+            AuthorLogin = Me,
+            Comments = [CommentBy("colleague", id: "C_1"), CommentBy("colleague", id: "C_2")],
+        };
+
+        var prEvent = Assert.Single(ChangeDetector.Detect(Snapshot(pullRequest), Seen("comment:C_1"), Now).Events);
+
+        Assert.Equal("C_2", Assert.Single(prEvent.Comments).Id);
+    }
+
+    [Fact]
+    public void Stale_comments_are_marked_seen_without_reporting()
+    {
+        var pullRequest = Create(PrGroups.Mine) with
+        {
+            AuthorLogin = Me,
+            Comments = [CommentBy("colleague") with { CreatedAt = Now.AddDays(-2) }],
+        };
+
+        var result = ChangeDetector.Detect(Snapshot(pullRequest), NothingSeen, Now);
+
+        Assert.Empty(result.Events);
+        Assert.Contains("comment:C_1", result.SeenKeys);
     }
 
     [Fact]
@@ -176,7 +297,7 @@ public class ChangeDetectorTests
             Reviews = [ReviewBy("reviewer", ReviewState.Commented, commitOid: "old")],
         };
 
-        Assert.Empty(EventsFor(pullRequest));
+        Assert.DoesNotContain(EventsFor(pullRequest), prEvent => prEvent.Kind == PrEventKind.NewCommitsSinceUnapprovedReview);
     }
 
     [Fact]

@@ -13,7 +13,12 @@
           "reviewDecision": "APPROVED",
           "commits": { "nodes": [ { "commit": { "oid": "aaa111", "committedDate": "2026-09-23T08:00:00Z" } } ] },
           "reviews": { "nodes": [
-            { "id": "R_A1", "state": "APPROVED", "submittedAt": "2026-09-23T11:00:00Z", "author": { "__typename": "User", "login": "teammate" }, "commit": { "oid": "aaa111" } }
+            { "id": "R_A1", "state": "APPROVED", "url": "https://github.com/acme/widgets/pull/72#pullrequestreview-1", "bodyText": "Ser bra ut!", "submittedAt": "2026-09-23T11:00:00Z", "author": { "__typename": "User", "login": "teammate" }, "commit": { "oid": "aaa111" } }
+          ] },
+          "comments": { "nodes": [
+            { "id": "IC_A1", "url": "https://github.com/acme/widgets/pull/72#issuecomment-11", "createdAt": "2026-09-23T11:15:00Z", "bodyText": "Kan vi squashe på merge?", "author": { "__typename": "User", "login": "teammate" } },
+            { "id": "IC_A2", "url": "https://github.com/acme/widgets/pull/72#issuecomment-12", "createdAt": "2026-09-23T11:20:00Z", "bodyText": "Dependency Review: no issues found", "author": { "__typename": "Bot", "login": "github-actions" } },
+            { "id": "IC_A3", "url": "https://github.com/acme/widgets/pull/72#issuecomment-13", "createdAt": "2026-09-23T11:25:00Z", "bodyText": "", "author": null }
           ] }
         }
       ]
@@ -31,14 +36,27 @@
           "reviewDecision": "CHANGES_REQUESTED",
           "commits": { "nodes": [ { "commit": { "oid": "bbb222", "committedDate": "2026-09-23T10:30:00Z" } } ] },
           "reviews": { "nodes": [
-            { "id": "R_B1", "state": "COMMENTED", "submittedAt": "2026-09-22T10:00:00Z", "author": { "__typename": "Bot", "login": "copilot-pull-request-reviewer" }, "commit": { "oid": "bbb111" } },
-            { "id": "R_B2", "state": "CHANGES_REQUESTED", "submittedAt": "2026-09-22T15:00:00Z", "author": { "__typename": "User", "login": "rasmusrim" }, "commit": { "oid": "bbb111" } }
+            { "id": "R_B1", "state": "COMMENTED", "url": "https://github.com/acme/widgets/pull/70#pullrequestreview-2", "bodyText": "Copilot reviewed 3 files", "submittedAt": "2026-09-22T10:00:00Z", "author": { "__typename": "Bot", "login": "copilot-pull-request-reviewer" }, "commit": { "oid": "bbb111" } },
+            { "id": "R_B2", "state": "CHANGES_REQUESTED", "url": "https://github.com/acme/widgets/pull/70#pullrequestreview-3", "bodyText": "", "submittedAt": "2026-09-22T15:00:00Z", "author": { "__typename": "User", "login": "rasmusrim" }, "commit": { "oid": "bbb111" } }
           ] }
         }
       ]
     },
     "watched": {
       "nodes": [
+        {
+          "id": "PR_A", "number": 72, "title": "Legg til historikk",
+          "url": "https://github.com/acme/widgets/pull/72",
+          "state": "OPEN", "isDraft": false,
+          "createdAt": "2026-09-23T08:00:00Z", "mergedAt": null,
+          "author": { "login": "rasmusrim" },
+          "repository": { "nameWithOwner": "acme/widgets" },
+          "reviewDecision": "APPROVED",
+          "commits": { "nodes": [ { "commit": { "oid": "aaa111", "committedDate": "2026-09-23T08:00:00Z" } } ] },
+          "reviews": { "nodes": [
+            { "id": "R_A1", "state": "APPROVED", "url": "https://github.com/acme/widgets/pull/72#pullrequestreview-1", "bodyText": "Ser bra ut!", "submittedAt": "2026-09-23T11:00:00Z", "author": { "__typename": "User", "login": "teammate" }, "commit": { "oid": "aaa111" } }
+          ] }
+        },
         {
           "id": "PR_B", "number": 70, "title": "Ny SMS-flyt & <varsler>",
           "url": "https://github.com/acme/widgets/pull/70",
@@ -49,8 +67,8 @@
           "reviewDecision": "CHANGES_REQUESTED",
           "commits": { "nodes": [ { "commit": { "oid": "bbb222", "committedDate": "2026-09-23T10:30:00Z" } } ] },
           "reviews": { "nodes": [
-            { "id": "R_B1", "state": "COMMENTED", "submittedAt": "2026-09-22T10:00:00Z", "author": { "__typename": "Bot", "login": "copilot-pull-request-reviewer" }, "commit": { "oid": "bbb111" } },
-            { "id": "R_B2", "state": "CHANGES_REQUESTED", "submittedAt": "2026-09-22T15:00:00Z", "author": { "__typename": "User", "login": "rasmusrim" }, "commit": { "oid": "bbb111" } }
+            { "id": "R_B1", "state": "COMMENTED", "url": "https://github.com/acme/widgets/pull/70#pullrequestreview-2", "bodyText": "Copilot reviewed 3 files", "submittedAt": "2026-09-22T10:00:00Z", "author": { "__typename": "Bot", "login": "copilot-pull-request-reviewer" }, "commit": { "oid": "bbb111" } },
+            { "id": "R_B2", "state": "CHANGES_REQUESTED", "url": "https://github.com/acme/widgets/pull/70#pullrequestreview-3", "bodyText": "", "submittedAt": "2026-09-22T15:00:00Z", "author": { "__typename": "User", "login": "rasmusrim" }, "commit": { "oid": "bbb111" } }
           ] }
         },
         {

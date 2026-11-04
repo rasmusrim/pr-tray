@@ -4,12 +4,13 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using PrTray.App.Styling;
 using PrTray.Core.Models;
+using PrTray.Core.Presentation;
 
 namespace PrTray.App.Overview;
 
 public sealed class SectionCard : Border
 {
-    public SectionCard(string heading, IReadOnlyList<PullRequest> pullRequests, DateTimeOffset now, Action<string> openUrl)
+    public SectionCard(string heading, IReadOnlyList<PullRequest> pullRequests, DateTimeOffset now, UnreadComments unreadComments, Action<string> openUrl)
     {
         Background = StatusColors.CardBackground;
         CornerRadius = new CornerRadius(8);
@@ -21,7 +22,7 @@ public sealed class SectionCard : Border
         if (pullRequests.Count == 0)
             content.Children.Add(new TextBlock { Text = "Ingen", Opacity = 0.5, Margin = new Thickness(12, 4, 12, 8) });
         foreach (var pullRequest in pullRequests)
-            content.Children.Add(new PullRequestRow(pullRequest, now, openUrl));
+            content.Children.Add(new PullRequestRow(pullRequest, now, unreadComments.For(pullRequest), openUrl));
         Child = content;
     }
 

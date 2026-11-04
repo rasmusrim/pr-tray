@@ -8,6 +8,8 @@ public static class AppPaths
 
     public static string SeenFile => Path.Combine(StateDirectory, "seen.json");
 
+    public static string UnreadCommentsFile => Path.Combine(StateDirectory, "unread-comments.json");
+
     private static string ConfigDirectory =>
         OperatingSystem.IsWindows() ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppFolderName)
         : OperatingSystem.IsMacOS() ? MacDirectory

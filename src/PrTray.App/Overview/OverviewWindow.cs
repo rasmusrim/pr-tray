@@ -41,15 +41,15 @@ public sealed class OverviewWindow : Window
         };
     }
 
-    public void ShowSections(PrSections? sections, DateTimeOffset? fetchedAt, DateTimeOffset now)
+    public void ShowSections(PrSections? sections, DateTimeOffset? fetchedAt, DateTimeOffset now, UnreadComments unreadComments)
     {
         lastUpdated.Text = fetchedAt is null ? "Henter PR-er…" : $"Sist oppdatert {fetchedAt.Value.ToLocalTime():HH:mm}";
         sectionCards.Children.Clear();
         if (sections is null)
             return;
-        sectionCards.Children.Add(new SectionCard("Mine PR-er", sections.Mine, now, openUrl));
-        sectionCards.Children.Add(new SectionCard("Til review", sections.ToReview, now, openUrl));
-        sectionCards.Children.Add(new SectionCard("Overvåkede repoer", sections.Watched, now, openUrl));
-        sectionCards.Children.Add(new SectionCard("Nylig merget", sections.RecentlyMerged, now, openUrl));
+        sectionCards.Children.Add(new SectionCard("Mine PR-er", sections.Mine, now, unreadComments, openUrl));
+        sectionCards.Children.Add(new SectionCard("Til review", sections.ToReview, now, unreadComments, openUrl));
+        sectionCards.Children.Add(new SectionCard("Overvåkede repoer", sections.Watched, now, unreadComments, openUrl));
+        sectionCards.Children.Add(new SectionCard("Nylig merget", sections.RecentlyMerged, now, unreadComments, openUrl));
     }
 }

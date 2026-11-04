@@ -12,7 +12,7 @@ namespace PrTray.App.Overview;
 
 public sealed class PullRequestRow : Button
 {
-    public PullRequestRow(PullRequest pullRequest, DateTimeOffset now, Action<string> openUrl)
+    public PullRequestRow(PullRequest pullRequest, DateTimeOffset now, UnreadComment? unreadComment, Action<string> openUrl)
     {
         var statusColor = StatusColors.For(pullRequest);
         HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -20,12 +20,15 @@ public sealed class PullRequestRow : Button
         Padding = new Thickness(12, 8);
         Background = Brushes.Transparent;
         Cursor = new Cursor(StandardCursorType.Hand);
-        Content = new Grid
+        var grid = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
-            Children = { StatusDot(statusColor), Texts(pullRequest, now), StatusChip(pullRequest, statusColor) },
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"),
+            Children = { StatusDot(statusColor), Texts(pullRequest, now), Chip(PrLabels.StatusText(pullRequest), statusColor, column: 3) },
         };
-        Click += (_, _) => openUrl(pullRequest.Url);
+        if (unreadComment is not null)
+            grid.Children.Add(Chip($"{PrLabels.UnreadCommentsMarker} Nye kommentarer", StatusColors.UnreadComments, column: 2, new Thickness(0, 0, 6, 0)));
+        Content = grid;
+        Click += (_, _) => openUrl(unreadComment?.FirstCommentUrl ?? pullRequest.Url);
     }
 
     protected override Type StyleKeyOverride => typeof(Button);
@@ -55,23 +58,24 @@ public sealed class PullRequestRow : Button
         return texts;
     }
 
-    private static Border StatusChip(PullRequest pullRequest, Color statusColor)
+    private static Border Chip(string text, Color color, int column, Thickness margin = default)
     {
         var chip = new Border
         {
-            Background = StatusColors.Subtle(statusColor),
+            Background = StatusColors.Subtle(color),
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(8, 2),
+            Margin = margin,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
             {
-                Text = PrLabels.StatusText(pullRequest),
+                Text = text,
                 Classes = { TextStyles.Caption },
                 FontWeight = FontWeight.SemiBold,
-                Foreground = new SolidColorBrush(statusColor),
+                Foreground = new SolidColorBrush(color),
             },
         };
-        Grid.SetColumn(chip, 2);
+        Grid.SetColumn(chip, column);
         return chip;
     }
 }

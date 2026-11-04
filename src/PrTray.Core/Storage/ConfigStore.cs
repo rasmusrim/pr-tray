@@ -54,20 +54,23 @@ public sealed partial class ConfigStore(string filePath)
             .ToList(),
         PollIntervalSeconds: Math.Max(stored.PollIntervalSeconds ?? PrTrayConfig.Default.PollIntervalSeconds, MinimumPollIntervalSeconds),
         GhPath: string.IsNullOrWhiteSpace(stored.GhPath) ? PrTrayConfig.Default.GhPath : stored.GhPath,
-        NotificationSound: SanitizeSound(stored),
-        CustomSoundFile: string.IsNullOrWhiteSpace(stored.CustomSoundFile) ? null : stored.CustomSoundFile,
+        NotificationSound: SanitizeSound(stored.NotificationSound, stored.CustomSoundFile, PrTrayConfig.Default.NotificationSound),
+        CustomSoundFile: SanitizeSoundFile(stored.CustomSoundFile),
         TextSize: Enum.TryParse<TextSize>(stored.TextSize, ignoreCase: true, out var textSize) && Enum.IsDefined(textSize)
             ? textSize
-            : PrTrayConfig.Default.TextSize);
+            : PrTrayConfig.Default.TextSize,
+        CommentNotificationSound: SanitizeSound(stored.CommentNotificationSound, stored.CommentCustomSoundFile, PrTrayConfig.Default.CommentNotificationSound),
+        CommentCustomSoundFile: SanitizeSoundFile(stored.CommentCustomSoundFile));
 
-    private static NotificationSound SanitizeSound(StoredConfig stored)
+    private static NotificationSound SanitizeSound(string? storedSound, string? storedSoundFile, NotificationSound fallback)
     {
-        if (!Enum.TryParse<NotificationSound>(stored.NotificationSound, ignoreCase: true, out var sound) || !Enum.IsDefined(sound))
-            return PrTrayConfig.Default.NotificationSound;
-        return sound == NotificationSound.Custom && string.IsNullOrWhiteSpace(stored.CustomSoundFile)
-            ? PrTrayConfig.Default.NotificationSound
-            : sound;
+        if (!Enum.TryParse<NotificationSound>(storedSound, ignoreCase: true, out var sound) || !Enum.IsDefined(sound))
+            return fallback;
+        return sound == NotificationSound.Custom && SanitizeSoundFile(storedSoundFile) is null ? fallback : sound;
     }
+
+    private static string? SanitizeSoundFile(string? storedSoundFile) =>
+        string.IsNullOrWhiteSpace(storedSoundFile) ? null : storedSoundFile;
 
     [GeneratedRegex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")]
     private static partial Regex RepositoryName();
@@ -79,5 +82,7 @@ public sealed partial class ConfigStore(string filePath)
         string? GhPath,
         string? NotificationSound,
         string? CustomSoundFile,
-        string? TextSize);
+        string? TextSize,
+        string? CommentNotificationSound,
+        string? CommentCustomSoundFile);
 }

@@ -8,5 +8,6 @@ public enum PrEventKind
     ChangesRequested,
     ReviewRequested,
     ReadyForReview,
+    Commented,
     Merged,
 }

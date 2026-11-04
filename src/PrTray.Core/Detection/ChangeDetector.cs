@@ -29,7 +29,7 @@ public static class ChangeDetector
             if (isUnseen && !isSilent && IsFresh(candidate.OccurredAt, now))
                 events.Add(candidate.Event);
         }
-        return new DetectionResult(SuppressRedundant(events), seenKeys);
+        return new DetectionResult(CombineCommentsPerPullRequest(SuppressRedundant(events)), seenKeys);
     }
 
     private static IEnumerable<Candidate> CandidatesFor(PullRequest pullRequest, string viewerLogin, SeenState seen)
@@ -66,8 +66,20 @@ public static class ChangeDetector
 
             if (review.State == ReviewState.ChangesRequested && pullRequest.IsIn(PrGroups.Mine))
                 yield return new Candidate($"review:{review.Id}", review.SubmittedAt, new PrEvent(PrEventKind.ChangesRequested, pullRequest, review.AuthorLogin));
+
+            if (review.State == ReviewState.Commented && !review.AuthorIsBot && pullRequest.IsIn(PrGroups.Mine))
+                yield return new Candidate($"review:{review.Id}", review.SubmittedAt, CommentedEvent(pullRequest, review.AsComment()));
+        }
+
+        if (pullRequest.IsIn(PrGroups.Mine))
+        {
+            foreach (var comment in pullRequest.Comments.Where(comment => comment.AuthorLogin != viewerLogin && !comment.AuthorIsBot))
+                yield return new Candidate($"comment:{comment.Id}", comment.CreatedAt, CommentedEvent(pullRequest, comment));
         }
     }
+
+    private static PrEvent CommentedEvent(PullRequest pullRequest, Comment comment) =>
+        new(PrEventKind.Commented, pullRequest, comment.AuthorLogin) { Comments = [comment] };
 
     private static bool IsFresh(DateTimeOffset? occurredAt, DateTimeOffset now) =>
         occurredAt is null || now - occurredAt.Value <= FreshnessWindow;
@@ -82,6 +94,25 @@ public static class ChangeDetector
             .Where(prEvent => !(RedundantWithReviewRequest.Contains(prEvent.Kind) && reviewRequestedIds.Contains(prEvent.PullRequest.Id)))
             .ToList();
     }
+
+    // Replies to several review threads arrive as separate reviews; one notification per PR is enough.
+    private static IReadOnlyList<PrEvent> CombineCommentsPerPullRequest(IReadOnlyList<PrEvent> events)
+    {
+        var commentsByPullRequestId = events
+            .Where(prEvent => prEvent.Kind == PrEventKind.Commented)
+            .GroupBy(prEvent => prEvent.PullRequest.Id)
+            .ToDictionary(
+                group => group.Key,
+                group => group.SelectMany(prEvent => prEvent.Comments).OrderBy(comment => comment.CreatedAt).ToList());
+        var combinedPullRequestIds = new HashSet<string>();
+        return events
+            .Where(prEvent => prEvent.Kind != PrEventKind.Commented || combinedPullRequestIds.Add(prEvent.PullRequest.Id))
+            .Select(prEvent => prEvent.Kind == PrEventKind.Commented ? WithComments(prEvent, commentsByPullRequestId[prEvent.PullRequest.Id]) : prEvent)
+            .ToList();
+    }
+
+    private static PrEvent WithComments(PrEvent prEvent, IReadOnlyList<Comment> comments) =>
+        prEvent with { ActorLogin = comments[0].AuthorLogin, Comments = comments };
 
     // A candidate without an event only marks state as seen, e.g. that a PR has been a draft.
     private sealed record Candidate(string Key, DateTimeOffset? OccurredAt, PrEvent? Event);

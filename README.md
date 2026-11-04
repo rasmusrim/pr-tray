@@ -9,8 +9,11 @@ Du får skrivebordsvarsler, og et klikk på varselet åpner PR-en, når
 - en PR får nye commits etter en review som ikke var en godkjenning
 - en PR blir godkjent
 - noen ber om endringer på PR-en din
+- noen kommenterer på PR-en din, i samtalen eller i koden (et klikk åpner da selve kommentaren)
 - du blir bedt om review
 - en PR blir merget
+
+Har noen kommentert på PR-en din, får tray-ikonet en liten blå prikk, og PR-en merkes med 💬 i menyen og i oversikten. Prikken forsvinner når du åpner PR-en fra PrTray (varselet, menyen eller oversikten), når du selv svarer eller reviewer på GitHub, eller når PR-en lukkes eller merges.
 
 Tray-menyen viser «Mine PR-er», «Til review» og «Overvåkede repoer». «Vis oversikt…» åpner et vindu med alle PR-ene, og «Innstillinger…» lar deg velge hvilke repoer som skal være med.
 
@@ -90,7 +93,9 @@ Innstillingene lagres i `~/.config/PrTray/config.json`:
   "pollIntervalSeconds": 120,
   "ghPath": "gh",
   "notificationSound": "message",
-  "customSoundFile": null
+  "customSoundFile": null,
+  "commentNotificationSound": "email",
+  "commentCustomSoundFile": null
 }
 ```
 
@@ -101,10 +106,12 @@ Innstillingene lagres i `~/.config/PrTray/config.json`:
 | `ghPath` | Stien til `gh`, hvis den ikke ligger i `PATH` |
 | `notificationSound` | Lyden ved varsler: `none`, `message`, `email`, `complete`, `bell`, `reminder` eller `custom` |
 | `customSoundFile` | Stien til egen lydfil når `notificationSound` er `custom` (WAV på Windows) |
+| `commentNotificationSound` | Lyden ved varsler om kommentarer, med de samme valgene som `notificationSound` (standard `email`) |
+| `commentCustomSoundFile` | Stien til egen lydfil når `commentNotificationSound` er `custom` |
 
-Lyden kan også velges i innstillingsvinduet, der «Spill av» viser et testvarsel med valgt lyd. Kommer flere varsler samtidig, spilles lyden bare én gang.
+Lydene kan også velges i innstillingsvinduet, der «Spill av» viser et testvarsel med valgt lyd. Kommer flere varsler samtidig, spilles hver av de to lydene bare én gang.
 
-Hvilke hendelser du allerede er varslet om, lagres i `~/.local/state/PrTray/seen.json`. Første gang appen kjører, registreres alt som finnes uten varsler. Nye PR-er, reviews og merger som er eldre enn et døgn, varsles ikke.
+Hvilke hendelser du allerede er varslet om, lagres i `~/.local/state/PrTray/seen.json`, og hvilke PR-er som har uleste kommentarer i `unread-comments.json` i samme mappe. Første gang appen kjører, registreres alt som finnes uten varsler. Nye PR-er, reviews og merger som er eldre enn et døgn, varsles ikke.
 
 ## Feilsøking
 

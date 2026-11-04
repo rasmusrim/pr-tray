@@ -14,8 +14,13 @@ public sealed class LinuxNotifier : INotifier
 
     private readonly PendingNotifications pendingNotifications = new();
     private readonly Lazy<Task<IDisposable>> actionSubscription;
+    private readonly Action<string> openUrl;
 
-    public LinuxNotifier() => actionSubscription = new Lazy<Task<IDisposable>>(SubscribeToActionsAsync);
+    public LinuxNotifier(Action<string> openUrl)
+    {
+        this.openUrl = openUrl;
+        actionSubscription = new Lazy<Task<IDisposable>>(SubscribeToActionsAsync);
+    }
 
     public void Show(NotificationMessage message, NotificationSoundSelection sound) => _ = ShowAsync(message, sound);
 
@@ -59,7 +64,7 @@ public sealed class LinuxNotifier : INotifier
                     ? pendingNotifications.TakeUrlForAction(notification.Value.NotificationId, notification.Value.ActionKey)
                     : null;
                 if (url is not null)
-                    UrlOpener.Open(url);
+                    openUrl(url);
             },
             ObserverFlags.None,
             false,

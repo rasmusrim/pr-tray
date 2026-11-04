@@ -19,8 +19,9 @@ public sealed class TrayApp : Application
 {
     private readonly NativeMenu menu = new();
     private readonly TextStyles textStyles = new();
-    private readonly INotifier notifier = NotifierFactory.Create();
+    private readonly INotifier notifier;
     private readonly ConfigStore configStore = new(AppPaths.ConfigFile);
+    private readonly UnreadCommentsStore unreadCommentsStore = new(AppPaths.UnreadCommentsFile);
     private PrTrayConfig config = PrTrayConfig.Default;
     private readonly GhClient ghClient = new(new ProcessRunner(), TimeProvider.System);
     private Poller? poller;
@@ -29,6 +30,10 @@ public sealed class TrayApp : Application
     private SettingsWindow? settingsWindow;
     private PrSnapshot? lastSnapshot;
     private GhResult? latestResult;
+    private UnreadComments unreadComments = UnreadComments.None;
+
+    // Notification clicks arrive on a D-Bus thread.
+    public TrayApp() => notifier = NotifierFactory.Create(url => Dispatcher.UIThread.Post(() => OpenUrl(url)));
 
     public override void Initialize()
     {
@@ -39,11 +44,12 @@ public sealed class TrayApp : Application
     public override void OnFrameworkInitializationCompleted()
     {
         config = configStore.LoadOrCreate();
+        unreadComments = unreadCommentsStore.Load();
         textStyles.Apply(Resources, config.TextSize);
         poller = new Poller(ghClient, new SeenStore(AppPaths.SeenFile), config, TimeProvider.System);
         poller.Polled += outcome => Dispatcher.UIThread.Post(() => OnPolled(outcome));
 
-        trayIcon = new TrayIcon { Icon = TrayIconFactory.Create(TrayStatus.Neutral), ToolTipText = "PrTray", Menu = menu, IsVisible = true };
+        trayIcon = new TrayIcon { Icon = TrayIconFactory.Create(TrayStatus.Neutral, unreadComments.Count > 0), ToolTipText = "PrTray", Menu = menu, IsVisible = true };
         trayIcon.Clicked += (_, _) => ShowOverview();
         TrayIcon.SetIcons(this, new TrayIcons { trayIcon });
 
@@ -52,37 +58,62 @@ public sealed class TrayApp : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private NotificationSoundSelection ConfiguredSound => new(config.NotificationSound, config.CustomSoundFile);
+    private NotificationSounds ConfiguredSounds => new(
+        new NotificationSoundSelection(config.NotificationSound, config.CustomSoundFile),
+        new NotificationSoundSelection(config.CommentNotificationSound, config.CommentCustomSoundFile));
 
     private PrSections? CurrentSections => lastSnapshot is null ? null : PrSections.From(lastSnapshot);
 
-    private TrayMenuActions MenuActions => new(UrlOpener.Open, ShowOverview, ShowSettings, () => _ = poller?.RefreshNowAsync(), Quit);
+    private TrayMenuActions MenuActions => new(OpenUrl, ShowOverview, ShowSettings, () => _ = poller?.RefreshNowAsync(), Quit);
 
     private void OnPolled(PollOutcome outcome)
     {
         latestResult = outcome.Result;
         if (outcome.Result is GhResult.Success success)
+        {
             lastSnapshot = success.Snapshot;
+            UpdateUnreadComments(unreadComments.Add(outcome.Events).KeepRelevant(success.Snapshot));
+        }
         var messages = NotificationTexts.ForBatch(outcome.Events);
+        var sounds = ConfiguredSounds.ForBatch(messages);
         for (var index = 0; index < messages.Count; index++)
-            notifier.Show(messages[index], index == 0 ? ConfiguredSound : NotificationSoundSelection.Silent);
+            notifier.Show(messages[index], sounds[index]);
         Refresh();
+    }
+
+    private void OpenUrl(string url)
+    {
+        UrlOpener.Open(url);
+        UpdateUnreadComments(unreadComments.MarkOpened(url));
+        // The click may come from a menu item that Refresh replaces, so rebuild after the click has been handled.
+        Dispatcher.UIThread.Post(Refresh);
+    }
+
+    private void UpdateUnreadComments(UnreadComments updated)
+    {
+        if (updated.Entries.SequenceEqual(unreadComments.Entries))
+            return;
+        unreadComments = updated;
+        unreadCommentsStore.Save(unreadComments);
     }
 
     private void Refresh()
     {
         var sections = CurrentSections;
-        trayIcon!.Icon = TrayIconFactory.Create(latestResult is null ? TrayStatus.Neutral : TrayStatusCalculator.Calculate(latestResult, sections));
-        trayIcon.ToolTipText = sections is null ? "PrTray" : $"PrTray – {sections.Mine.Count} mine, {sections.ToReview.Count} til review";
-        TrayMenuBuilder.Populate(menu, sections, latestResult, lastSnapshot?.FetchedAt, MenuActions);
+        var status = latestResult is null ? TrayStatus.Neutral : TrayStatusCalculator.Calculate(latestResult, sections);
+        trayIcon!.Icon = TrayIconFactory.Create(status, unreadComments.Count > 0);
+        trayIcon.ToolTipText = sections is null ? "PrTray" : $"PrTray – {sections.Mine.Count} mine, {sections.ToReview.Count} til review{UnreadCommentsToolTip}";
+        TrayMenuBuilder.Populate(menu, sections, latestResult, lastSnapshot?.FetchedAt, unreadComments, MenuActions);
         if (overviewWindow?.IsVisible == true)
-            overviewWindow.ShowSections(sections, lastSnapshot?.FetchedAt, TimeProvider.System.GetUtcNow());
+            overviewWindow.ShowSections(sections, lastSnapshot?.FetchedAt, TimeProvider.System.GetUtcNow(), unreadComments);
     }
+
+    private string UnreadCommentsToolTip => unreadComments.Count == 0 ? "" : $", {unreadComments.Count} med nye kommentarer";
 
     private void ShowOverview()
     {
-        overviewWindow ??= new OverviewWindow(UrlOpener.Open);
-        overviewWindow.ShowSections(CurrentSections, lastSnapshot?.FetchedAt, TimeProvider.System.GetUtcNow());
+        overviewWindow ??= new OverviewWindow(OpenUrl);
+        overviewWindow.ShowSections(CurrentSections, lastSnapshot?.FetchedAt, TimeProvider.System.GetUtcNow(), unreadComments);
         overviewWindow.Show();
         overviewWindow.Activate();
     }

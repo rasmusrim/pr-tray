@@ -20,7 +20,7 @@ public sealed class NotificationSoundPicker : StackPanel
     private readonly TextBlock fileName = new() { Opacity = 0.65, TextTrimming = TextTrimming.CharacterEllipsis };
     private string? customSoundFile;
 
-    public NotificationSoundPicker(NotificationSoundSelection current, Action<NotificationSoundSelection> preview)
+    public NotificationSoundPicker(string label, NotificationSoundSelection current, Action<NotificationSoundSelection> preview)
     {
         Spacing = 6;
         soundInput.SelectedItem = current.Sound;
@@ -28,7 +28,7 @@ public sealed class NotificationSoundPicker : StackPanel
         soundInput.SelectionChanged += (_, _) => Render();
         chooseFileButton.Click += (_, _) => _ = ChooseFileAsync();
         previewButton.Click += (_, _) => preview(Selection);
-        Children.Add(new TextBlock { Text = "Lyd ved varsler" });
+        Children.Add(new TextBlock { Text = label });
         Children.Add(new StackPanel
         {
             Orientation = Orientation.Horizontal,

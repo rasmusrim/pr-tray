@@ -32,6 +32,13 @@ public class PrLabelsTests
     }
 
     [Fact]
+    public void Menu_label_marks_unread_comments()
+    {
+        Assert.Equal("⏳ 💬 acme/widgets#70  Legg til historikk", PrLabels.MenuLabel(Create(PrGroups.Mine), hasUnreadComments: true));
+        Assert.Equal("⏳ acme/widgets#70  Legg til historikk", PrLabels.MenuLabel(Create(PrGroups.Mine)));
+    }
+
+    [Fact]
     public void Problem_texts_describe_failures()
     {
         Assert.Equal("gh ikke funnet – installer GitHub CLI", PrLabels.Problem(new GhResult.NotInstalled()));

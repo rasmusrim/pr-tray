@@ -29,6 +29,8 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(NotificationSound.Message, config.NotificationSound);
         Assert.Null(config.CustomSoundFile);
         Assert.Equal(TextSize.Normal, config.TextSize);
+        Assert.Equal(NotificationSound.Email, config.CommentNotificationSound);
+        Assert.Null(config.CommentCustomSoundFile);
         Assert.Contains("\"repositories\"", File.ReadAllText(ConfigPath));
     }
 
@@ -41,6 +43,7 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(300, config.PollIntervalSeconds);
         Assert.Equal("/opt/homebrew/bin/gh", config.GhPath);
         Assert.Equal(NotificationSound.Bell, config.NotificationSound);
+        Assert.Equal(PrTrayConfig.Default.CommentNotificationSound, config.CommentNotificationSound);
     }
 
     [Fact]
@@ -83,7 +86,8 @@ public sealed class ConfigStoreTests : IDisposable
     public void Saved_config_round_trips_under_the_new_key()
     {
         var store = new ConfigStore(ConfigPath);
-        var config = new PrTrayConfig(["rasmusrim/ku", "acme/widgets"], 300, "gh", NotificationSound.Custom, "/home/me/pling.wav", TextSize.Larger);
+        var config = new PrTrayConfig(["rasmusrim/ku", "acme/widgets"], 300, "gh", NotificationSound.Custom, "/home/me/pling.wav", TextSize.Larger,
+            NotificationSound.Custom, "/home/me/kommentar.wav");
 
         store.Save(config);
 
@@ -92,6 +96,9 @@ public sealed class ConfigStoreTests : IDisposable
         Assert.Equal(NotificationSound.Custom, store.LoadOrCreate().NotificationSound);
         Assert.Equal("/home/me/pling.wav", store.LoadOrCreate().CustomSoundFile);
         Assert.Equal(TextSize.Larger, store.LoadOrCreate().TextSize);
+        Assert.Equal(NotificationSound.Custom, store.LoadOrCreate().CommentNotificationSound);
+        Assert.Equal("/home/me/kommentar.wav", store.LoadOrCreate().CommentCustomSoundFile);
+        Assert.Contains("\"commentNotificationSound\": \"custom\"", File.ReadAllText(ConfigPath));
         Assert.Contains("\"textSize\": \"larger\"", File.ReadAllText(ConfigPath));
         Assert.Contains("\"notificationSound\": \"custom\"", File.ReadAllText(ConfigPath));
         Assert.DoesNotContain("watchedRepositories", File.ReadAllText(ConfigPath));
@@ -104,6 +111,17 @@ public sealed class ConfigStoreTests : IDisposable
     public void Unknown_sound_or_custom_sound_without_file_falls_back_to_default(string json)
     {
         Assert.Equal(PrTrayConfig.Default.NotificationSound, LoadFrom(json).NotificationSound);
+    }
+
+    [Theory]
+    [InlineData("""{ "commentNotificationSound": "bell" }""", NotificationSound.Bell)]
+    [InlineData("""{ "commentNotificationSound": "none" }""", NotificationSound.None)]
+    [InlineData("""{ "commentNotificationSound": "custom", "commentCustomSoundFile": "/home/me/kommentar.wav" }""", NotificationSound.Custom)]
+    [InlineData("""{ "commentNotificationSound": "custom", "customSoundFile": "/home/me/pling.wav" }""", NotificationSound.Email)]
+    [InlineData("""{ "commentNotificationSound": "trumpet" }""", NotificationSound.Email)]
+    public void Comment_sound_is_loaded_separately_and_falls_back_to_its_own_default(string json, NotificationSound expected)
+    {
+        Assert.Equal(expected, LoadFrom(json).CommentNotificationSound);
     }
 
     [Fact]

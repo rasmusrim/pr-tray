@@ -25,8 +25,10 @@ public static class PrLabels
         _ => "Venter på review",
     };
 
-    public static string MenuLabel(PullRequest pullRequest) =>
-        EscapeAccessKeys($"{StatusEmoji(pullRequest)} {pullRequest.DisplayName}  {Truncate(pullRequest.Title, MaxTitleLength)}");
+    public const string UnreadCommentsMarker = "💬";
+
+    public static string MenuLabel(PullRequest pullRequest, bool hasUnreadComments = false) =>
+        EscapeAccessKeys($"{StatusEmoji(pullRequest)}{(hasUnreadComments ? $" {UnreadCommentsMarker}" : "")} {pullRequest.DisplayName}  {Truncate(pullRequest.Title, MaxTitleLength)}");
 
     public static string? Problem(GhResult result) => result switch
     {

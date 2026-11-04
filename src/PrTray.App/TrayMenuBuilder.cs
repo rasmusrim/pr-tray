@@ -9,7 +9,7 @@ public static class TrayMenuBuilder
 {
     private const int MaxItemsPerSection = 10;
 
-    public static void Populate(NativeMenu menu, PrSections? sections, GhResult? latestResult, DateTimeOffset? lastSuccessAt, TrayMenuActions actions)
+    public static void Populate(NativeMenu menu, PrSections? sections, GhResult? latestResult, DateTimeOffset? lastSuccessAt, UnreadComments unreadComments, TrayMenuActions actions)
     {
         menu.Items.Clear();
         var problem = latestResult is null ? null : PrLabels.Problem(latestResult);
@@ -17,9 +17,9 @@ public static class TrayMenuBuilder
             AddDisabled(menu, PrLabels.EscapeAccessKeys(problem));
         if (sections is not null)
         {
-            AddSection(menu, "Mine PR-er", sections.Mine, actions);
-            AddSection(menu, "Til review", sections.ToReview, actions);
-            AddSection(menu, "Overvåkede repoer", sections.Watched, actions);
+            AddSection(menu, "Mine PR-er", sections.Mine, unreadComments, actions);
+            AddSection(menu, "Til review", sections.ToReview, unreadComments, actions);
+            AddSection(menu, "Overvåkede repoer", sections.Watched, unreadComments, actions);
         }
         menu.Items.Add(new NativeMenuItemSeparator());
         AddAction(menu, "Vis oversikt…", actions.ShowOverview);
@@ -29,13 +29,16 @@ public static class TrayMenuBuilder
         AddAction(menu, "Avslutt", actions.Quit);
     }
 
-    private static void AddSection(NativeMenu menu, string heading, IReadOnlyList<PullRequest> pullRequests, TrayMenuActions actions)
+    private static void AddSection(NativeMenu menu, string heading, IReadOnlyList<PullRequest> pullRequests, UnreadComments unreadComments, TrayMenuActions actions)
     {
         if (pullRequests.Count == 0)
             return;
         AddDisabled(menu, $"{heading} ({pullRequests.Count})");
         foreach (var pullRequest in pullRequests.Take(MaxItemsPerSection))
-            AddAction(menu, PrLabels.MenuLabel(pullRequest), () => actions.OpenUrl(pullRequest.Url));
+        {
+            var unreadComment = unreadComments.For(pullRequest);
+            AddAction(menu, PrLabels.MenuLabel(pullRequest, unreadComment is not null), () => actions.OpenUrl(unreadComment?.FirstCommentUrl ?? pullRequest.Url));
+        }
         if (pullRequests.Count > MaxItemsPerSection)
             AddDisabled(menu, $"… og {pullRequests.Count - MaxItemsPerSection} til (se oversikt)");
         menu.Items.Add(new NativeMenuItemSeparator());

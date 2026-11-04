@@ -21,6 +21,7 @@ public class GhResponseParserTests
     public void Merges_duplicates_across_aliases_and_skips_non_pr_nodes()
     {
         Assert.Equal(new[] { "PR_A", "PR_B", "PR_C", "PR_D" }, Snapshot.PullRequests.Select(pullRequest => pullRequest.Id).Order());
+        Assert.Equal(PrGroups.Mine | PrGroups.Watched, PullRequestWithId("PR_A").Groups);
         Assert.Equal(PrGroups.ReviewedByMe | PrGroups.Watched, PullRequestWithId("PR_B").Groups);
         Assert.Equal(PrGroups.Mine | PrGroups.Watched, PullRequestWithId("PR_D").Groups);
     }
@@ -49,11 +50,34 @@ public class GhResponseParserTests
         Assert.Equal(new[] { "R_B1", "R_B2" }, reviews.Select(review => review.Id));
         Assert.Equal(ReviewState.Commented, reviews[0].State);
         Assert.True(reviews[0].AuthorIsBot);
+        Assert.Equal("https://github.com/acme/widgets/pull/70#pullrequestreview-2", reviews[0].Url);
+        Assert.Equal("Copilot reviewed 3 files", reviews[0].BodyText);
         Assert.Equal(ReviewState.ChangesRequested, reviews[1].State);
         Assert.False(reviews[1].AuthorIsBot);
         Assert.Equal("rasmusrim", reviews[1].AuthorLogin);
         Assert.Equal("bbb111", reviews[1].CommitOid);
         Assert.Equal(DateTimeOffset.Parse("2026-09-22T15:00:00Z"), reviews[1].SubmittedAt);
+    }
+
+    [Fact]
+    public void Parses_comments_on_my_pull_requests()
+    {
+        var comments = PullRequestWithId("PR_A").Comments;
+
+        Assert.Equal(new[] { "IC_A1", "IC_A2", "IC_A3" }, comments.Select(comment => comment.Id));
+        Assert.Equal("teammate", comments[0].AuthorLogin);
+        Assert.False(comments[0].AuthorIsBot);
+        Assert.Equal(DateTimeOffset.Parse("2026-09-23T11:15:00Z"), comments[0].CreatedAt);
+        Assert.Equal("https://github.com/acme/widgets/pull/72#issuecomment-11", comments[0].Url);
+        Assert.Equal("Kan vi squashe på merge?", comments[0].BodyText);
+        Assert.True(comments[1].AuthorIsBot);
+        Assert.Equal("ghost", comments[2].AuthorLogin);
+    }
+
+    [Fact]
+    public void Pull_requests_only_found_by_searches_without_comments_have_none()
+    {
+        Assert.Empty(PullRequestWithId("PR_B").Comments);
     }
 
     [Fact]

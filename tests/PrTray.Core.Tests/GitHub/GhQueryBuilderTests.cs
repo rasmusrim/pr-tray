@@ -41,6 +41,16 @@ public class GhQueryBuilderTests
     }
 
     [Fact]
+    public void Only_the_search_for_my_pull_requests_fetches_comments()
+    {
+        var query = GhQueryBuilder.Build(["acme/widgets"], MergedSince);
+
+        Assert.Contains("mine: search(query: \"is:pr is:open archived:false author:@me repo:acme/widgets\", type: ISSUE, first: 50) { nodes { ...PrFields ...CommentFields } }", query);
+        Assert.Single(query.Split("...CommentFields").Skip(1));
+        Assert.Contains("fragment CommentFields on PullRequest { comments(last: 20)", query);
+    }
+
+    [Fact]
     public void Repository_filter_is_applied_to_every_search()
     {
         var query = GhQueryBuilder.Build(["acme/widgets"], MergedSince);

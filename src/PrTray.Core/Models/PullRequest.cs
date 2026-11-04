@@ -15,6 +15,7 @@ public sealed record PullRequest(
     string? HeadCommitOid,
     DateTimeOffset? HeadCommittedAt,
     IReadOnlyList<Review> Reviews,
+    IReadOnlyList<Comment> Comments,
     PrGroups Groups)
 {
     public string DisplayName => $"{Repository}#{Number}";

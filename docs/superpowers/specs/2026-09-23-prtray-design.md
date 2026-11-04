@@ -33,8 +33,8 @@ Solution `~/repos/PrTray`, .NET 10 (SDK 10.0.112), Avalonia 12.1.3 (tray-ikon ve
 Den eldre nøkkelen `watchedRepositories` leses fortsatt; lagring skriver `repositories`. Repo-listen redigeres i appen via menyvalget «Innstillinger…» (vindu med liste, «Fjern», tekstfelt for `eier/repo` eller GitHub-lenke + «Legg til», «Avbryt»/«Lagre»). Et repo sjekkes med `gh api repos/<eier>/<repo>` før det legges til. «Lagre» skriver config, oppdaterer polleren og henter på nytt med en gang.
 
 ### PrTray.Core (net10.0, ingen UI)
-- `GhClient` – kjører `gh api graphql -f query=...` via `Process`, parser med System.Text.Json. Én spørring, felles fragment `PrFields` (`id number title url state isDraft createdAt mergedAt author{login} repository{nameWithOwner} reviewDecision commits(last:1){nodes{commit{oid}}} reviews(last:30){nodes{id state submittedAt author{__typename login} commit{oid}}}`), aliaser:
-  - `mine`: `is:pr is:open author:@me archived:false`
+- `GhClient` – kjører `gh api graphql -f query=...` via `Process`, parser med System.Text.Json. Én spørring, felles fragment `PrFields` (`id number title url state isDraft createdAt mergedAt author{login} repository{nameWithOwner} reviewDecision commits(last:1){nodes{commit{oid}}} reviews(last:30){nodes{id state url bodyText submittedAt author{__typename login} commit{oid}}}`), aliaser:
+  - `mine`: `is:pr is:open author:@me archived:false`. Bare dette søket henter i tillegg fragmentet `CommentFields` (`comments(last:20){nodes{id url createdAt bodyText author{__typename login}}}`), siden kommentarer bare brukes på mine PR-er. Når samme PR også kommer fra et annet søk, beholdes kommentarene ved sammenslåing.
   - `requested`: `is:pr is:open review-requested:@me archived:false`
   - `reviewed`: `is:pr is:open reviewed-by:@me archived:false`
   - `watched`: `is:pr is:open archived:false repo:A repo:B …` (utelates hvis listen er tom)
@@ -53,10 +53,11 @@ Den eldre nøkkelen `watchedRepositories` leses fortsatt; lagring skriver `repos
   | `Approved` | APPROVED-review av andre enn meg | `review:<reviewId>` |
   | `ChangesRequested` | Min PR, CHANGES_REQUESTED av andre | `review:<reviewId>` |
   | `ReviewRequested` | I `requested` | `requested:<prId>:<headOid>` |
+  | `Commented` | Min PR, kommentar i samtalen eller COMMENTED-review fra et menneske som ikke er meg (bots som Copilot og github-actions ignoreres) | `comment:<commentId>` / `review:<reviewId>` |
   | `ReadyForReview` | Watched/ReviewedByMe/ReviewRequested, forfatter ≠ meg, ikke utkast, og tidligere sett som utkast (`draft:<prId>` registreres stille mens PR-en er utkast) | `ready:<prId>` |
   | `Merged` | `State == MERGED` | `merged:<prId>` |
 
-  Hvis samme PR gir `ReviewRequested` sammen med `Opened`, `NewCommitsSinceUnapprovedReview` eller `ReadyForReview` i én runde, vises bare `ReviewRequested` (alle nøkler markeres sett). Hendelser med tidsstempel eldre enn 24 t (opprettet, review, merget) markeres sett uten varsel. `ReviewRequested` og `NewCommitsSinceUnapprovedReview` har ikke noe pålitelig tidsstempel (commit-dato ≠ push-tid) og varsles uansett alder. `ReadyForReview` har heller ikke tidsstempel og varsles uansett alder. Når repo-listen endres, registreres PR-er som dukker opp for første gang stille, så et nytt repo ikke spiller av gamle hendelser.
+  Hvis samme PR gir `ReviewRequested` sammen med `Opened`, `NewCommitsSinceUnapprovedReview` eller `ReadyForReview` i én runde, vises bare `ReviewRequested` (alle nøkler markeres sett). Hendelser med tidsstempel eldre enn 24 t (opprettet, review, merget) markeres sett uten varsel. `ReviewRequested` og `NewCommitsSinceUnapprovedReview` har ikke noe pålitelig tidsstempel (commit-dato ≠ push-tid) og varsles uansett alder. `ReadyForReview` har heller ikke tidsstempel og varsles uansett alder. Alle nye kommentarer på samme PR i én runde (f.eks. svar i flere review-tråder, som hver blir en egen review) slås sammen til ett `Commented`-varsel; varselet viser hvem, antall og starten av den første kommentaren med tekst, og åpner den første nye kommentaren. Når repo-listen endres, registreres PR-er som dukker opp for første gang stille, så et nytt repo ikke spiller av gamle hendelser.
 - `SeenStore` – JSON i `~/.local/state/PrTray/seen.json` (`XDG_STATE_HOME`-fallback), `%LOCALAPPDATA%\PrTray\` på Windows. Manglende/tom fil ⇒ første kjøring registrerer alle nøkler uten å varsle. Korrupt fil ⇒ behandles som første kjøring.
 - `Poller` – `PeriodicTimer` (fra config) + `RefreshNowAsync()`; eksponerer `SnapshotUpdated` og `EventsDetected`. Aldri to samtidige kall.
 
@@ -64,7 +65,9 @@ Den eldre nøkkelen `watchedRepositories` leses fortsatt; lagring skriver `repos
 - `App` med `TrayIcon` + `NativeMenu`, ingen hovedvindu ved oppstart (`ShutdownMode.OnExplicitShutdown`).
 - Meny (bygges på nytt ved hvert snapshot): seksjonene «Mine PR-er», «Til review» (requested + PR-er jeg har reviewet som har fått nye commits etter review uten godkjenning), «Overvåkede repoer»; hver linje `✅/❌/⏳ repo#nr tittel` → åpner URL. Deretter «Vis oversikt…», «Oppdater nå», deaktivert «Sist oppdatert HH:mm» (+ «(feilet)»), «Avslutt». Feiltilstand: «gh ikke innlogget – kjør gh auth login» / «gh ikke funnet».
 - `OverviewWindow` – liste med repo, tittel, status, forfatter, alder; lukk = skjul.
-- `TrayIconFactory` – tegner ikonet i kode (ingen PNG-filer): sirkel med lys kontur så den synes på mørk og lys topplinje. Farge: grå (feil), rød (noe krever handling fra meg: changes requested på min PR, review-forespørsel, nye commits etter review uten godkjenning), grønn (min PR godkjent), nøytral ellers.
+- `TrayIconFactory` – tegner ikonet i kode (ingen PNG-filer): sirkel med lys kontur så den synes på mørk og lys topplinje. Farge: grå (feil), rød (noe krever handling fra meg: changes requested på min PR, review-forespørsel, nye commits etter review uten godkjenning), grønn (min PR godkjent), nøytral ellers. En liten blå prikk øverst til høyre betyr uleste kommentarer.
+- `UnreadComments` (Core) – hvilke av mine PR-er som har uleste kommentarer: første uleste kommentar (lenken menyen og oversikten åpner) og tidspunktet for den siste. Et `Commented`-varsel gjør PR-en ulest. Den blir lest når en URL innenfor PR-en åpnes fra PrTray (varsel, meny, oversikt), når jeg kommenterer eller reviewer etter siste uleste kommentar, eller når PR-en ikke lenger er en åpen PR av meg. Lagres i `unread-comments.json` ved siden av `seen.json`, så prikken overlever omstart.
+- Lyder: `notificationSound`/`customSoundFile` for PR-hendelser og `commentNotificationSound`/`commentCustomSoundFile` (standard `email`) for kommentarer. I hver runde spiller hver av de to lydene bare én gang.
 - `INotifier` – egen implementasjon per OS (DesktopNotifications-pakken avhenger av Avalonia 0.10 og kan ikke brukes):
   - Linux: `org.freedesktop.Notifications` direkte over D-Bus (`Tmds.DBus.Protocol`). `notify-send` 0.8.8 dropper handlinger på GNOME 50, og GNOME sender `ActionInvoked` bare til tilkoblingen som laget varselet. Klikk på varselet eller «Åpne» åpner PR-en.
   - macOS: `osascript -e 'display notification …'` (uten klikk-handling).
@@ -72,7 +75,7 @@ Den eldre nøkkelen `watchedRepositories` leses fortsatt; lagring skriver `repos
 - `UrlOpener` – `Process.Start` med `UseShellExecute=true`.
 
 ### PrTray.Core.Tests (xUnit v3)
-- `ChangeDetector`: én test per rad i tabellen, egen review ignoreres, COMMENTED ignoreres, første kjøring gir ingen hendelser, allerede sett gir ingen hendelser, Opened+ReviewRequested-dedup, nye commits etter at jeg deretter har godkjent gir ingen hendelse.
+- `ChangeDetector`: én test per rad i tabellen, egen review ignoreres, COMMENTED-review fra andre på min PR gir `Commented`, egne og bot-kommentarer ignoreres, kommentarer slås sammen per PR, første kjøring gir ingen hendelser, allerede sett gir ingen hendelser, Opened+ReviewRequested-dedup, nye commits etter at jeg deretter har godkjent gir ingen hendelse.
 - `GhClient`-parsing mot JSON-fixture lagret fra ekte `gh api graphql`-respons; `GhQueryBuilder` med/uten watched-repoer.
 - `SeenStore`/`ConfigStore` round-trip og korrupt fil i temp-mappe.
 

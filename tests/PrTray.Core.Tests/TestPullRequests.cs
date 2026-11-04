@@ -22,10 +22,15 @@ internal static class TestPullRequests
         HeadCommitOid: "head1",
         HeadCommittedAt: Now.AddMinutes(-30),
         Reviews: [],
+        Comments: [],
         Groups: groups);
 
     public static Review ReviewBy(string author, ReviewState state, string id = "R_1", string commitOid = "head1") =>
-        new(id, state, author, AuthorIsBot: false, Now.AddMinutes(-10), commitOid);
+        new(id, state, author, AuthorIsBot: false, Now.AddMinutes(-10), commitOid,
+            Url: $"https://github.com/acme/widgets/pull/70#pullrequestreview-{id}", BodyText: "");
+
+    public static Comment CommentBy(string author, string id = "C_1", string bodyText = "Kan du se på navngivningen her?") =>
+        new(id, author, AuthorIsBot: false, Now.AddMinutes(-5), $"https://github.com/acme/widgets/pull/70#issuecomment-{id}", bodyText);
 
     public static PrSnapshot Snapshot(params PullRequest[] pullRequests) => new(Me, pullRequests, Now);
 }

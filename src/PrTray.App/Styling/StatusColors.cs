@@ -9,6 +9,8 @@ public static class StatusColors
 
     public static readonly IBrush CardBackground = new SolidColorBrush(Color.Parse("#808080"), 0.08);
 
+    public static readonly Color UnreadComments = Color.Parse("#2F81F7");
+
     public static Color For(PullRequest pullRequest) => pullRequest switch
     {
         { State: PrState.Merged } => Color.Parse("#8957E5"),

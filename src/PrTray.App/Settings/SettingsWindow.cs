@@ -23,6 +23,7 @@ public sealed class SettingsWindow : Window
     private readonly TextBox newRepositoryInput = new() { PlaceholderText = "eier/repo eller GitHub-lenke" };
     private readonly TextBlock validationMessage = new() { IsVisible = false, TextWrapping = TextWrapping.Wrap };
     private readonly NotificationSoundPicker soundPicker;
+    private readonly NotificationSoundPicker commentSoundPicker;
     private readonly ComboBox textSizeInput = new()
     {
         ItemsSource = Enum.GetValues<TextSize>(),
@@ -38,13 +39,14 @@ public sealed class SettingsWindow : Window
     {
         this.currentConfig = currentConfig;
         repositories = currentConfig.Repositories.ToList();
-        soundPicker = new NotificationSoundPicker(new(currentConfig.NotificationSound, currentConfig.CustomSoundFile), previewSound);
+        soundPicker = new NotificationSoundPicker("Lyd ved PR-varsler", new(currentConfig.NotificationSound, currentConfig.CustomSoundFile), previewSound);
+        commentSoundPicker = new NotificationSoundPicker("Lyd ved kommentarer", new(currentConfig.CommentNotificationSound, currentConfig.CommentCustomSoundFile), previewSound);
         textSizeInput.SelectedItem = currentConfig.TextSize;
         this.saveConfig = saveConfig;
         this.checkRepository = checkRepository;
         Title = "PrTray – innstillinger";
         Width = 540;
-        Height = 600;
+        Height = 700;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         newRepositoryInput.KeyDown += (_, keyArguments) =>
         {
@@ -55,7 +57,7 @@ public sealed class SettingsWindow : Window
         var footer = new StackPanel
         {
             Spacing = 12,
-            Children = { soundPicker, SettingsLayout.Labeled("Tekststørrelse", textSizeInput), SettingsLayout.ButtonRow(("Avbryt", false, Close), ("Lagre", true, SaveAndClose)) },
+            Children = { soundPicker, commentSoundPicker, SettingsLayout.Labeled("Tekststørrelse", textSizeInput), SettingsLayout.ButtonRow(("Avbryt", false, Close), ("Lagre", true, SaveAndClose)) },
         };
         DockPanel.SetDock(footer, Dock.Bottom);
         var header = SettingsLayout.Header(newRepositoryInput, AddRepository, validationMessage);
@@ -118,6 +120,8 @@ public sealed class SettingsWindow : Window
             NotificationSound = soundPicker.Selection.Sound,
             CustomSoundFile = soundPicker.Selection.CustomSoundFile,
             TextSize = textSizeInput.SelectedItem as TextSize? ?? currentConfig.TextSize,
+            CommentNotificationSound = commentSoundPicker.Selection.Sound,
+            CommentCustomSoundFile = commentSoundPicker.Selection.CustomSoundFile,
         });
         Close();
     }
